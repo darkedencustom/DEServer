@@ -19,7 +19,7 @@ public:
 	static const LevelType MaxLevel = _MaxLevel;
 	static const LevelType MinLevel = _MinLevel;
 
-	ExpTable() : m_Records(MaxLevel) { }
+	ExpTable() : m_Records(MaxLevel + 1) { }	// indexed by level, and MaxLevel itself is a valid level
 	virtual ~ExpTable() { }
 
 	// DB 관련 함수들

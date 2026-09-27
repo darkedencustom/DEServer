@@ -4578,6 +4578,12 @@ bool Slayer::isNovice() const
 	return ( m_STR[ATTR_BASIC] + m_DEX[ATTR_BASIC] + m_INT[ATTR_BASIC] ) <= 40;
 }
 
+// live attribute sum: m_STR/DEX/INT[ATTR_BASIC] are only refreshed by initAllStat
+static int liveAttrSum( Attr* const* pAttrs )
+{
+	return pAttrs[ATTR_KIND_STR]->getLevel() + pAttrs[ATTR_KIND_DEX]->getLevel() + pAttrs[ATTR_KIND_INT]->getLevel();
+}
+
 void Slayer::divideAttrExp(AttrKind kind, Damage_t damage, ModifyInfo& modifyInfo)
 {
 	SLAYER_RECORD prev;
@@ -4723,55 +4729,64 @@ void Slayer::divideAttrExp(AttrKind kind, Damage_t damage, ModifyInfo& modifyInf
 		SWAP(pSubAttrs[0], pSubAttrs[1], pTemp);
 	}
 
-	bool downOtherLevel = TotalAttr >= TotalAttrBound;
-	bool upOtherLevel = TotalAttr < OneAttrExpBound;
-	// EXP carries over: the main attribute keeps rising while the grant still covers its goal (chain).
-	bool levelUpMainAttr  = false;
-	int  mainLevelsGained = 0;
+	// EXP carries over (chain level-ups), but every single level re-checks the caps the original
+	// one-level-per-grant code enforced, against the live levels (m_STR/DEX/INT[ATTR_BASIC] only refresh
+	// in initAllStat):
+	//  - the main attribute stops at AttrBound;
+	//  - at the sum bound a main level costs one level of the higher sub attribute (none to shed = no level);
+	//  - a sub attribute only earns EXP while the sum is under OneAttrExpBound or it is under SubAttrMax,
+	//    and never levels past AttrBound or the sum bound.
+	bool levelUpMainAttr = false;
 	{
 		Exp_t rest  = MainPoint;
 		int   guard = 0;
 		while ( rest > 0 && ++guard < 1000 )
 		{
-			bool  canLevelUp = pMainAttr->getLevel() < AttrBound;
-			Exp_t goal       = pMainAttr->getGoalExp();
-			if ( canLevelUp && rest >= goal )
+			Exp_t goal = pMainAttr->getGoalExp();
+			if ( pMainAttr->getLevel() >= AttrBound || rest < goal )
 			{
-				if ( !pMainAttr->increaseExp( goal, true ) ) break;   // table max level
-				levelUpMainAttr = true;
-				++mainLevelsGained;
-				rest -= goal;
+				pMainAttr->increaseExp( rest, false );
+				break;
 			}
-			else
+
+			if ( liveAttrSum( m_pAttrs ) >= TotalAttrBound )
 			{
-				pMainAttr->increaseExp( rest, canLevelUp );
-				rest = 0;
+				Attr* pShed = ( pSubAttrs[0]->getLevel() >= pSubAttrs[1]->getLevel() ) ? pSubAttrs[0] : pSubAttrs[1];
+				if ( !pShed->levelDown() )
+				{
+					pMainAttr->increaseExp( rest, false );
+					break;
+				}
+				levelUpSubAttrs[0] = true;	// stats changed: recompute + heal below
 			}
+
+			if ( !pMainAttr->increaseExp( goal, true ) ) break;   // table max level
+			levelUpMainAttr = true;
+			rest -= goal;
 		}
 	}
 
-	// the attribute sum may not grow past its bound: shed one sub level for every main level over it
-	int overBound = (int)TotalAttr + mainLevelsGained - (int)TotalAttrBound;
-	if ( levelUpMainAttr && ( downOtherLevel || overBound > 0 ) )
+	for ( int s = 0; s < 2; ++s )
 	{
-		for ( int i = 0; i < overBound; ++i )
+		Attr* pSub  = pSubAttrs[s];
+		Exp_t rest  = SubPoint;
+		int   guard = 0;
+		while ( rest > 0 && ++guard < 1000 )
 		{
-			if ( !pSubAttrs[0]->levelDown() ) break;
-		}
-		levelUpSubAttrs[0] = true;
-	}
+			int sum = liveAttrSum( m_pAttrs );
+			if ( sum >= OneAttrExpBound && pSub->getLevel() >= SubAttrMax ) break;
 
-	if ( upOtherLevel )
-	{
-		levelUpSubAttrs[0] = pSubAttrs[0]->increaseExp( SubPoint, true, true ) || levelUpSubAttrs[0];
-		levelUpSubAttrs[1] = pSubAttrs[1]->increaseExp( SubPoint, true, true );
-	}
-	else
-	{
-		if ( pSubAttrs[0]->getLevel() < SubAttrMax )
-			levelUpSubAttrs[0] = pSubAttrs[0]->increaseExp( SubPoint, true, true ) || levelUpSubAttrs[0];
-		if ( pSubAttrs[1]->getLevel() < SubAttrMax )
-			levelUpSubAttrs[1] = pSubAttrs[1]->increaseExp( SubPoint, true, true ) || levelUpSubAttrs[1];
+			Exp_t goal = pSub->getGoalExp();
+			if ( rest < goal || sum >= TotalAttrBound || pSub->getLevel() >= AttrBound )
+			{
+				pSub->increaseExp( rest, false );
+				break;
+			}
+
+			if ( !pSub->increaseExp( goal, true ) ) break;
+			levelUpSubAttrs[s] = true;
+			rest -= goal;
+		}
 	}
 
 	if ( ++m_AttrExpSaveCount > ATTR_EXP_SAVE_PERIOD )

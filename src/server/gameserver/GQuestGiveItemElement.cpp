@@ -19,6 +19,9 @@ GQuestElement::ResultType GQuestGiveItemElement::checkCondition( PlayerCreature*
 //	cout << "GQuestGiveItemElement : " << (int)m_ItemClass << ", " << (int)m_ItemType << endl;
 	Item* pItem = g_pItemFactoryManager->createItem( m_ItemClass, m_ItemType, m_Option );
 	if ( pItem == NULL ) return FAIL;
+
+	// quest reward: shops pay 1 gold for it (PriceManager::getPrice)
+	pItem->setCreateType( Item::CREATE_TYPE_GAME );
 	
 	pItem->setNum(m_Num);
 	Inventory* pInventory = pPC->getInventory();

@@ -122,6 +122,8 @@ QuestMessage ItemRewardInfo::giveReward( PlayerCreature *pPC ) const
 		return COMPLETE_FAIL_NO_INVENTORY_SPACE;
 	}
 
+	// quest reward: shops pay 1 gold for it (PriceManager::getPrice)
+	pItem->setCreateType( Item::CREATE_TYPE_GAME );
 	pItem->create( pPC->getName(), STORAGE_INVENTORY, 0, tp.x, tp.y );
 
 	GCCreateItem gcCreateItem;

@@ -113,7 +113,7 @@ Money: 10,000겔드</RewardMessage>
 		<Reward>
 			<GiveVampireExp amount="200" />
 			<GiveMoney amount="10000" />
-			<GiveItem class="VAMPIRE_AMULET" type="15" option="VIS+2" limitedtime="2592000"/>
+			<GiveItem class="VAMPIRE_AMULET" type="15" option="VIS+2"/>
 		</Reward>
 	</Quest>
 	<Quest id="106" type="adventure">
@@ -140,8 +140,8 @@ Option: STR+3 / INT+3</RewardMessage>
 		</Fail>
 		<Reward>
 			<Random>
-	    		<GiveItem class="VAMPIRE_WEAPON" type="25" option="STR+3" limitedtime="2592000" />
-	    		<GiveItem class="VAMPIRE_WEAPON" type="25" option="INT+3" limitedtime="2592000" />
+	    		<GiveItem class="VAMPIRE_WEAPON" type="25" option="STR+3" />
+	    		<GiveItem class="VAMPIRE_WEAPON" type="25" option="INT+3" />
 			</Random>
 		</Reward>
 	</Quest>
@@ -165,7 +165,7 @@ No. 108 퀘스트 시작</RewardMessage>
 		<Fail>
 		</Fail>
 		<Reward>
-			<GiveItem class="VAMPIRE_ETC" type="1" num="20" limitedtime="2592000"/>
+			<GiveItem class="VAMPIRE_ETC" type="1" num="20"/>
 			<StartOtherQuest id="108"/>
        	</Reward>
 	</Quest>
@@ -193,7 +193,7 @@ Option: ATTR+2 (남/여 구분)</RewardMessage>
 			<Time limit="60" index="1">%s남은 시간 : %d분</Time>
 		</Fail>
 		<Reward>
-			<GiveItem class="VAMPIRE_COAT" type="26" option="ATTR+2" limitedtime="2592000"/>
+			<GiveItem class="VAMPIRE_COAT" type="26" option="ATTR+2"/>
        	</Reward>
 	</Quest>
 	<Quest id="109" type="adventure">
@@ -218,8 +218,8 @@ Option: RES+1</RewardMessage>
 			<Time limit="60" index="1">%s남은 시간 : %d분</Time>
 		</Fail>
 		<Reward>
-			<GiveItem class="VAMPIRE_RING" type="16" option="RES+1" limitedtime="2592000"/>
-			<GiveItem class="VAMPIRE_RING" type="16" option="RES+1" limitedtime="2592000"/>
+			<GiveItem class="VAMPIRE_RING" type="16" option="RES+1"/>
+			<GiveItem class="VAMPIRE_RING" type="16" option="RES+1"/>
        	</Reward>
 	</Quest>
 	<Quest id="110" type="adventure">
@@ -398,7 +398,7 @@ Money: 10,000레이</RewardMessage>
 		<Reward>
 			<GiveDomainExp amount="200" />
 			<GiveMoney amount="10000" />
-			<GiveItem class="BELT" type="9" option="HP+2" limitedtime="2592000"/>
+			<GiveItem class="BELT" type="9" option="HP+2"/>
 		</Reward>
 	</Quest>
 	<Quest id="206" type="adventure">
@@ -427,28 +427,28 @@ Bonus Exp: 400</RewardMessage>
 			<GiveDomainExp amount="400" />
             <OR>
 				<SlayerHighestSkillDomain domain="blade">
-	                <GiveItem class="BLADE" type="20" option="STR+3" limitedtime="2592000" />
+	                <GiveItem class="BLADE" type="20" option="STR+3" />
 		        </SlayerHighestSkillDomain>
 
 	            <SlayerHighestSkillDomain domain="sword">
-	                <GiveItem class="SWORD" type="20" option="STR+3" limitedtime="2592000" />
+	                <GiveItem class="SWORD" type="20" option="STR+3" />
 	            </SlayerHighestSkillDomain>
 
 	            <SlayerHighestSkillDomain domain="gun">
 	                <Random>
-	                    <GiveItem class="AR" type="20" option="DEX+3" limitedtime="2592000" />
-	                    <GiveItem class="SMG" type="18" option="DEX+3" limitedtime="2592000" />
-	                    <GiveItem class="SG" type="18" option="DEX+3" limitedtime="2592000" />
-	                    <GiveItem class="SR" type="20" option="DEX+3" limitedtime="2592000" />
+	                    <GiveItem class="AR" type="20" option="DEX+3" />
+	                    <GiveItem class="SMG" type="18" option="DEX+3" />
+	                    <GiveItem class="SG" type="18" option="DEX+3" />
+	                    <GiveItem class="SR" type="20" option="DEX+3" />
 	                </Random>
 	            </SlayerHighestSkillDomain>
 
 	            <SlayerHighestSkillDomain domain="heal">
-	                <GiveItem class="CROSS" type="18" option="INT+3" limitedtime="2592000" />
+	                <GiveItem class="CROSS" type="18" option="INT+3" />
 	            </SlayerHighestSkillDomain>
 
 	            <SlayerHighestSkillDomain domain="enchant">
-	                <GiveItem class="MACE" type="18" option="INT+3" limitedtime="2592000" />
+	                <GiveItem class="MACE" type="18" option="INT+3" />
 	            </SlayerHighestSkillDomain>
             </OR>
 		</Reward>
@@ -456,7 +456,7 @@ Bonus Exp: 400</RewardMessage>
 	<Quest id="207" type="charge">
 		<Title>잭을 찾아라</Title>
 		<HappenRegion zoneid="12" x="160" y="168"/>
-		<RewardMessage>Name: 발키리 스콜피온 키(Valkirie Scorpion Key)
+		<RewardMessage>Name: 스콜피온 키(Scorpion Key)
 No. 208 퀘스트 시작</RewardMessage>
 		<Script sender="비밀작전사령관">테스트를 무사 통과 한 것을 축하한다. 훈련은 이쯤에서 마치도록 하고 자네는 이제 비밀리에 여러 가지 임무들을 수행해야 한다. 물론 많은 어려움도 따르겠지만 잊지 않았겠지 모든 과정이 지나면 귀관에게 돌아갈 영광의 칭호를! 그럼 정식으로 비밀 요원으로써의 첫 특수 임무를 주겠네. 우선 잭에게 찾아가 이 무공 훈장을 잭에게 보여주고 특수 장비를 요청 해야 한다. 그는 네가 비밀요원으로써 모든 수행을 이겨나갈 도움을 줄 것 이다. 이제 시작에 불과 하다. 그럼 야전 사령부의 잭에게 가서 내 임무를 받도록 하게!</Script>
 		<Happen replay="false">
@@ -473,7 +473,7 @@ No. 208 퀘스트 시작</RewardMessage>
 		<Fail>
 		</Fail>
 		<Reward>
-			<GiveItem class="KEY" type="17" limitedtime="2592000"/>
+			<GiveItem class="KEY" type="2"/>
 			<StartOtherQuest id="208"/>
        	</Reward>
 	</Quest>
@@ -503,8 +503,8 @@ Bonus Exp: 1000</RewardMessage>
 		</Fail>
 		<Reward>
 			<GiveDomainExp amount="1000" />
-			<GiveItem class="COAT" type="30" option="ATTR+1" limitedtime="2592000"/>
-			<GiveItem class="TROUSER" type="30" option="ATTR+1" limitedtime="2592000"/>
+			<GiveItem class="COAT" type="30" option="ATTR+1"/>
+			<GiveItem class="TROUSER" type="30" option="ATTR+1"/>
        	</Reward>
 	</Quest>
 	<Quest id="209" type="adventure">
@@ -531,8 +531,8 @@ Bonus Exp: 2000 </RewardMessage>
 		</Fail>
 		<Reward>
 			<GiveDomainExp amount="2000" />
-			<GiveItem class="RING" type="16" option="RES+1" limitedtime="2592000"/>
-			<GiveItem class="RING" type="16" option="RES+1" limitedtime="2592000"/>
+			<GiveItem class="RING" type="16" option="RES+1"/>
+			<GiveItem class="RING" type="16" option="RES+1"/>
        	</Reward>
 	</Quest>
 	<Quest id="210" type="adventure">
@@ -694,7 +694,7 @@ Money: 10,000자드</RewardMessage>
 		<Reward>
 			<GiveOustersExp amount="200" />
 			<GiveMoney amount="10000" />
-			<GiveItem class="OUSTERS_ARMSBAND" type="15" option="HP+2" limitedtime="2592000"/>
+			<GiveItem class="OUSTERS_ARMSBAND" type="15" option="HP+2"/>
 		</Reward>
 	</Quest>
 	<Quest id="306" type="adventure">
@@ -723,10 +723,10 @@ Option: INT+3</RewardMessage>
 		</Fail>
 		<Reward>
 			<Random>
-	    		<GiveItem class="OUSTERS_CHAKRAM" type="20" option="STR+3" limitedtime="2592000" />
-	    		<GiveItem class="OUSTERS_WRISTLET" type="60" option="INT+3" limitedtime="2592000" />
-	    		<GiveItem class="OUSTERS_WRISTLET" type="61" option="INT+3" limitedtime="2592000" />
-	    		<GiveItem class="OUSTERS_WRISTLET" type="62" option="INT+3" limitedtime="2592000" />
+	    		<GiveItem class="OUSTERS_CHAKRAM" type="20" option="STR+3" />
+	    		<GiveItem class="OUSTERS_WRISTLET" type="60" option="INT+3" />
+	    		<GiveItem class="OUSTERS_WRISTLET" type="61" option="INT+3" />
+	    		<GiveItem class="OUSTERS_WRISTLET" type="62" option="INT+3" />
 			</Random>
 		</Reward>
 	</Quest>
@@ -751,7 +751,7 @@ No. 208 퀘스트 시작</RewardMessage>
 		<Fail>
 		</Fail>
 		<Reward>
-			<GiveItem class="OUSTERS_ARMSBAND" type="15" option="HP+2" limitedtime="2592000"/>
+			<GiveItem class="OUSTERS_ARMSBAND" type="15" option="HP+2"/>
 			<StartOtherQuest id="308"/>
        	</Reward>
 	</Quest>
@@ -779,8 +779,8 @@ Option: ATTR+1</RewardMessage>
 			<Time limit="60" index="1">%s남은 시간 : %d분</Time>
 		</Fail>
 		<Reward>
-			<GiveItem class="OUSTERS_COAT" type="15" option="ATTR+1" limitedtime="2592000"/>
-			<GiveItem class="OUSTERS_BOOTS" type="15" option="ATTR+1" limitedtime="2592000"/>
+			<GiveItem class="OUSTERS_COAT" type="15" option="ATTR+1"/>
+			<GiveItem class="OUSTERS_BOOTS" type="15" option="ATTR+1"/>
        	</Reward>
 	</Quest>
 	<Quest id="309" type="adventure">
@@ -805,8 +805,8 @@ Option: RES+1</RewardMessage>
 			<Time limit="60" index="1">%s남은 시간 : %d분</Time>
 		</Fail>
 		<Reward>
-			<GiveItem class="OUSTERS_RING" type="16" option="RES+1" limitedtime="2592000"/>
-			<GiveItem class="OUSTERS_RING" type="16" option="RES+1" limitedtime="2592000"/>
+			<GiveItem class="OUSTERS_RING" type="16" option="RES+1"/>
+			<GiveItem class="OUSTERS_RING" type="16" option="RES+1"/>
        	</Reward>
 	</Quest>
 	<Quest id="310" type="adventure">

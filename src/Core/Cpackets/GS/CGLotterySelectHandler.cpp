@@ -446,7 +446,8 @@ void CGLotterySelectHandler::execute (CGLotterySelect* pPacket , Player* pPlayer
 							break;
 						case 4:
 							{
-								isTimeLimit = true;
+								// quest rewards are permanent (was true: 7-day limit on the prize)
+								isTimeLimit = false;
 								if ( pPC->isSlayer() )
 								{
 									isUnique = true;
@@ -614,6 +615,9 @@ void CGLotterySelectHandler::execute (CGLotterySelect* pPacket , Player* pPlayer
 					}
 
 					setItemGender( pItem, gender );
+
+					// quest reward: shops pay 1 gold for it (PriceManager::getPrice)
+					if ( pItem != NULL ) pItem->setCreateType( Item::CREATE_TYPE_GAME );
 
 					_TPOINT tp;
 

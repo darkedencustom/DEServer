@@ -220,6 +220,7 @@ void CGShopRequestSellHandler::executeNormal (CGShopRequestSell* pPacket , Playe
 	// GlobalNPC를 통한 판매의 경우 특수 보관하지 않고 버린다.
 	if (pNPC->getShopType()==SHOPTYPE_NORMAL
 		&& pItem->getCreateType()!=Item::CREATE_TYPE_CREATE
+		&& pItem->getCreateType()!=Item::CREATE_TYPE_GAME	// quest/starter items sell for 1 gold
 		&& !pItem->getOptionTypeList().empty()
 		&& !pItem->isTimeLimitItem()
 		&& !pNPC->isGlobal()	

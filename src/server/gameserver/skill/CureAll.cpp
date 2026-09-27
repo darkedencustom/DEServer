@@ -350,14 +350,17 @@ SkillResultType CureAll::execute(Slayer* pSlayer, ObjectID_t TargetObjectID, Sla
 				RealHealPoint = max( 0, MaxHP - CurrentHP );
 			}
 
+			// heal before the EXP grant: when the caster targets itself a level-up inside it heals
+			// to the new max, and this stale pre-level value must not overwrite that
+			CurrentHP = min((int)(MaxHP), (int)(CurrentHP + HealPoint));
+			pTargetSlayer->setHP(CurrentHP, ATTR_CURRENT);
+
 			// 경험치를 올려준다.
 			shareAttrExp(pSlayer, RealHealPoint , param.STRMultiplier, param.DEXMultiplier, param.INTMultiplier, _GCSkillToObjectOK1);
 			increaseDomainExp(pSlayer, DomainType, pSkillInfo->getPoint(), _GCSkillToObjectOK1);
 			increaseSkillExp(pSlayer, DomainType, pSkillSlot, pSkillInfo, _GCSkillToObjectOK1);
 	
-			// HP를 셋팅한다.
-			CurrentHP = min((int)(MaxHP), (int)(CurrentHP + HealPoint));
-			pTargetSlayer->setHP(CurrentHP, ATTR_CURRENT);
+			CurrentHP = pTargetSlayer->getHP(ATTR_CURRENT);	// after a possible level-up heal
 
 			// 치료가 되었으니 HP를 브로드캐스팅한다.
 			GCStatusCurrentHP gcStatusCurrentHP;
@@ -734,13 +737,17 @@ SkillResultType CureAll::execute(Slayer* pSlayer, SlayerSkillSlot* pSkillSlot, C
 			} else {
 				RealHealPoint = max( 0, MaxHP - CurrentHP );
 			}
+			// heal before the EXP grant: a level-up inside it heals to the new max, and this
+			// stale pre-level value must not overwrite that (the client was already told "full")
+			CurrentHP = min((int)MaxHP, (int)(CurrentHP + HealPoint));
+			pSlayer->setHP(CurrentHP , ATTR_CURRENT);
+
 			// 경험치를 올려준다.
 			shareAttrExp(pSlayer, RealHealPoint, param.STRMultiplier, param.DEXMultiplier, param.INTMultiplier, _GCSkillToSelfOK1);
 			increaseDomainExp(pSlayer, DomainType, pSkillInfo->getPoint(), _GCSkillToSelfOK1);
 			increaseSkillExp(pSlayer, DomainType, pSkillSlot, pSkillInfo, _GCSkillToSelfOK1);
 
-			CurrentHP = min((int)MaxHP, (int)(CurrentHP + HealPoint));
-			pSlayer->setHP(CurrentHP , ATTR_CURRENT);
+			CurrentHP = pSlayer->getHP(ATTR_CURRENT);	// after a possible level-up heal
 
 			// HP를 브로드캐스팅한다.
 			GCStatusCurrentHP gcStatusCurrentHP;

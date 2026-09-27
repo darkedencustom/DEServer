@@ -84,11 +84,8 @@ void ActionRewardEventQuest::execute (Creature * pCreature1 , Creature * pCreatu
 			pPC->getZone()->registerObject( pItem );
 
 			pItem->create( pPC->getName(), STORAGE_INVENTORY, 0, pt.x, pt.y );
-			if ( pItem->isUnique() || pItem->isTimeLimitItem() )
-			{
-				pPC->addTimeLimitItem( pItem, 604800 );
-				pPC->sendTimeLimitItemInfo();
-			}
+			// quest rewards are permanent: the 7-day addTimeLimitItem() for
+			// unique / time-limit prizes was removed
 
 			GCCreateItem gcCreateItem;
 			makeGCCreateItem( &gcCreateItem, pItem, pt.x, pt.y );
