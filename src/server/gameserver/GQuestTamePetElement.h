@@ -3,6 +3,7 @@
 
 #include "GQuestElement.h"
 #include "GQuestStatus.h"
+#include "GQuestMissionState.h"
 
 class GQuestTamePetMission : public GQuestMission
 {
@@ -13,6 +14,8 @@ public:
 	void	tame() { m_bTame = true; }
 
 	string	getMissionName() const { return "TamePetMission"; }
+	string	saveState() const { return GQuestMissionState::fromBool(m_bTame); }
+	void	loadState(const string& s) { m_bTame = GQuestMissionState::toBool(s); }
 private:
 	bool	m_bTame;
 };

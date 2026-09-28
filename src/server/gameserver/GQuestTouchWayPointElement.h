@@ -3,6 +3,7 @@
 
 #include "GQuestElement.h"
 #include "GQuestStatus.h"
+#include "GQuestMissionState.h"
 
 class GQuestTouchWayPointMission : public GQuestMission
 {
@@ -13,6 +14,8 @@ public:
 	void	touch() { m_bTouch = true; }
 
 	string	getMissionName() const { return "TouchWayPointMission"; }
+	string	saveState() const { return GQuestMissionState::fromBool(m_bTouch); }
+	void	loadState(const string& s) { m_bTouch = GQuestMissionState::toBool(s); }
 private:
 	bool	m_bTouch;
 };

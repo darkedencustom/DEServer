@@ -33,6 +33,8 @@
 #include "EventKick.h"
 #include "StringPool.h"
 #include "CreatureUtil.h"
+#include "PlayerCreature.h"
+#include "GQuestManager.h"
 #include "item/Motorcycle.h"
 #include "Shape.h"
 #include "EffectMute.h"
@@ -258,6 +260,11 @@ GamePlayer::~GamePlayer ()
 		if ( m_pCreature != NULL )
 		{
 			g_pPCFinder->deleteCreature(m_pCreature->getName());
+			{
+				// in-progress quests go with the character (KAN-13)
+				PlayerCreature* pPC = dynamic_cast<PlayerCreature*>(m_pCreature);
+				if ( pPC != NULL && pPC->getGQuestManager() != NULL ) pPC->getGQuestManager()->save();
+			}
 			m_pCreature->save();
 				
 			SAFE_DELETE(m_pCreature);
@@ -1074,6 +1081,11 @@ void GamePlayer::disconnect (bool bDisconnected)
 				Assert(pZone != NULL);
 				pZone->deleteQueuePC(m_pCreature);
 				pZone->deleteCreature(m_pCreature , m_pCreature->getX() , m_pCreature->getY());
+				{
+					// in-progress quests go with the character (KAN-13)
+					PlayerCreature* pPC = dynamic_cast<PlayerCreature*>(m_pCreature);
+					if ( pPC != NULL && pPC->getGQuestManager() != NULL ) pPC->getGQuestManager()->save();
+				}
 				//--------------------------------------------------------------------------------
 				// ũ��ó�� �����Ѵ�.
 				//--------------------------------------------------------------------------------

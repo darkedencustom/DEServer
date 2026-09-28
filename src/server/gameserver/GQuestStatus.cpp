@@ -10,6 +10,7 @@
 #include "Vampire.h"
 
 #include "Gpackets/GCAddEffect.h"
+#include "GQuestMissionState.h"
 
 GQuestStatus::~GQuestStatus()
 {
@@ -56,6 +57,7 @@ void GQuestStatus::update()
 	gcModify.setType(checkMissions());
 	gcModify.setInfo(this);
 	m_pOwner->getPlayer()->sendPacket(&gcModify);
+	persist();
 }
 
 BYTE GQuestStatus::checkMissions()
@@ -476,4 +478,171 @@ void GQuestStatus::save() throw(Error)
 	END_DB( pStmt );
 
 	__END_CATCH
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// In-progress persistence (KAN-13)
+//////////////////////////////////////////////////////////////////////////////
+
+static string escapeSQL(const string& s)
+{
+	string ret;
+	ret.reserve(s.size() + 8);
+	for ( size_t i = 0; i < s.size(); ++i )
+	{
+		char c = s[i];
+		if ( c == '\\' || c == '\'' ) ret += '\\';
+		ret += c;
+	}
+	return ret;
+}
+
+void GQuestStatus::persist() throw(Error)
+{
+	__BEGIN_TRY
+
+	if ( m_Status == DOING || m_Status == SUCCESS )
+	{
+		save();
+		saveMissions();
+	}
+	else
+	{
+		deleteMissions();
+	}
+
+	__END_CATCH
+}
+
+void GQuestStatus::deleteMissions() throw(Error)
+{
+	__BEGIN_TRY
+
+	Statement* pStmt = NULL;
+
+	BEGIN_DB
+	{
+		pStmt = g_pDatabaseManager->getConnection("DARKEDEN")->createStatement();
+		pStmt->executeQuery("DELETE FROM GQuestMissionSave WHERE OwnerID='%s' AND QuestID=%u",
+				m_pOwner->getName().c_str(), m_QuestID);
+		SAFE_DELETE( pStmt );
+	}
+	END_DB( pStmt );
+
+	__END_CATCH
+}
+
+void GQuestStatus::saveMissions() throw(Error)
+{
+	__BEGIN_TRY
+
+	if ( m_pGQuestInfo == NULL ) return;
+
+	Statement* pStmt = NULL;
+
+	BEGIN_DB
+	{
+		pStmt = g_pDatabaseManager->getConnection("DARKEDEN")->createStatement();
+		pStmt->executeQuery("DELETE FROM GQuestMissionSave WHERE OwnerID='%s' AND QuestID=%u",
+				m_pOwner->getName().c_str(), m_QuestID);
+
+		list<MissionInfo*>::const_iterator itr = m_Missions.begin();
+		for ( ; itr != m_Missions.end() ; ++itr )
+		{
+			GQuestMission* pMission = dynamic_cast<GQuestMission*>(*itr);
+			if ( pMission == NULL || pMission->m_Condition >= GQuestInfo::MAX ) continue;
+
+			const vector<GQuestElement*>& elements = m_pGQuestInfo->getElements((GQuestInfo::ElementType)pMission->m_Condition);
+			int position = pMission->m_Position - elements.begin();
+			if ( position < 0 || position >= (int)elements.size() ) continue;
+
+			string sql = "INSERT INTO GQuestMissionSave (OwnerID, QuestID, Cond, Position, Status, NumArg, StrArg, State) VALUES ('"
+				+ m_pOwner->getName() + "', "
+				+ GQuestMissionState::fromDWORD(m_QuestID) + ", "
+				+ GQuestMissionState::fromDWORD(pMission->m_Condition) + ", "
+				+ GQuestMissionState::fromDWORD(position) + ", "
+				+ GQuestMissionState::fromDWORD(pMission->m_Status) + ", "
+				+ GQuestMissionState::fromDWORD(pMission->m_NumArg) + ", '"
+				+ escapeSQL(pMission->m_StrArg) + "', '"
+				+ escapeSQL(pMission->saveState()) + "')";
+			pStmt->executeQuery(sql);
+		}
+
+		SAFE_DELETE( pStmt );
+	}
+	END_DB( pStmt );
+
+	__END_CATCH
+}
+
+// Rebuild one mission from its GQuestMissionSave row. The element makes a fresh mission and the saved
+// state overwrites whatever it chose (random kill targets, travel route...). CURRENT missions are
+// registered for events again; finished ones are only kept so the client can list them.
+bool GQuestStatus::restoreMission(BYTE cond, WORD position, BYTE status, DWORD numArg, const string& strArg, const string& state)
+{
+	if ( m_pGQuestInfo == NULL || cond >= GQuestInfo::MAX ) return false;
+
+	const vector<GQuestElement*>& elements = m_pGQuestInfo->getElements((GQuestInfo::ElementType)cond);
+	if ( position >= elements.size() ) return false;
+
+	vector<GQuestElement*>::const_iterator itr = elements.begin() + position;
+	map<vector<GQuestElement*>::const_iterator, GQuestMission*>::iterator existing = m_MissionMap.find(itr);
+	if ( existing != m_MissionMap.end() && existing->second != NULL ) return false;
+
+	GQuestMission* pMission = (*itr)->makeInitMission(m_pOwner);
+	if ( pMission == NULL ) return false;
+
+	pMission->m_Condition = cond;
+	pMission->m_Index = (*itr)->getIndex();
+	pMission->m_Status = status;
+	pMission->m_NumArg = numArg;
+	pMission->m_StrArg = strArg;
+	pMission->m_Position = itr;
+	pMission->m_pParent = this;
+	pMission->loadState(state);
+
+	m_Missions.push_back( pMission );
+	m_MissionMap[itr] = pMission;
+
+	if ( status == MissionInfo::CURRENT ) (*itr)->whenMissionStart( m_pOwner, pMission );
+
+	return true;
+}
+
+// After every row is back: point each SEQUENCE section at the mission it was waiting on, so the
+// instant elements before it (scripts, item hand-outs, EXP) are not run a second time.
+void GQuestStatus::finishRestore()
+{
+	if ( m_pGQuestInfo == NULL ) return;
+
+	for ( int i = GQuestInfo::HAPPEN; i < GQuestInfo::MAX; ++i )
+	{
+		GQuestInfo::ElementType type = (GQuestInfo::ElementType)i;
+		const vector<GQuestElement*>& elements = m_pGQuestInfo->getElements(type);
+		m_ElementAdvance[i] = elements.begin();
+
+		if ( m_pGQuestInfo->getCheckType(type) != GQuestInfo::SEQUENCE ) continue;
+
+		bool found = false;
+		vector<GQuestElement*>::const_iterator resume = elements.begin();
+
+		list<MissionInfo*>::const_iterator itr = m_Missions.begin();
+		for ( ; itr != m_Missions.end() ; ++itr )
+		{
+			GQuestMission* pMission = dynamic_cast<GQuestMission*>(*itr);
+			if ( pMission == NULL || pMission->m_Condition != i ) continue;
+
+			vector<GQuestElement*>::const_iterator pos = pMission->m_Position;
+			// a mission that already ended was stepped past when it ended
+			if ( pMission->m_Status != MissionInfo::CURRENT ) ++pos;
+
+			if ( !found || pos > resume )
+			{
+				resume = pos;
+				found = true;
+			}
+		}
+
+		m_ElementAdvance[i] = resume;
+	}
 }

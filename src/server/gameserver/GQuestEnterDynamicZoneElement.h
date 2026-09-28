@@ -3,6 +3,7 @@
 
 #include "GQuestElement.h"
 #include "GQuestStatus.h"
+#include "GQuestMissionState.h"
 
 class GQuestEnterDynamicZoneMission : public GQuestMission
 {
@@ -13,6 +14,8 @@ public:
 	void	enter(ZoneID_t zoneID) { if ( m_TargetZoneID == zoneID ) m_bEnter = true; }
 
 	string	getMissionName() const { return "EnterDynamicZoneMission"; }
+	string	saveState() const { return GQuestMissionState::fromBool(m_bEnter); }
+	void	loadState(const string& s) { m_bEnter = GQuestMissionState::toBool(s); }
 private:
 	bool	m_bEnter;
 	ZoneID_t	m_TargetZoneID;

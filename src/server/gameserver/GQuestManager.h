@@ -60,6 +60,7 @@ public:
 	void load() throw(Error);
 	void init() throw(Error);
 	void clear() throw(Error);
+	void save() throw(Error);		// logout: keep DOING/SUCCESS quests and their missions (KAN-13)
 	void refreshQuest(bool sendPacket=true);
 
 	Packet*	getStatusInfoPacket() const;

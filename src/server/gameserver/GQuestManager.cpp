@@ -18,6 +18,8 @@
 #include "EffectEventQuestReset.h"
 #include "GQuestCheckPoint.h"
 #include <cstdio>
+#include <algorithm>
+#include <list>
 #include "StringPool.h"
 
 GQuestManager::~GQuestManager()
@@ -31,6 +33,8 @@ void GQuestManager::load()
 	__BEGIN_TRY
 
 	Statement* pStmt = NULL;
+	hash_map<DWORD, GQuestInfo*>& infos = GQuestInfoManager::Instance().getInfos();
+	list<DWORD> restoring;		// quests found DOING/SUCCESS; their missions come from GQuestMissionSave below
 
 	BEGIN_DB
 	{
@@ -43,18 +47,32 @@ void GQuestManager::load()
 			WORD	qID = pResult->getInt(1);
 			BYTE	sta = pResult->getInt(2);
 
-			if ( sta != QuestStatusInfo::COMPLETE && sta != QuestStatusInfo::FAIL && sta != QuestStatusInfo::CAN_REPLAY )
+			if ( sta == QuestStatusInfo::DOING || sta == QuestStatusInfo::SUCCESS )
 			{
-				SAFE_DELETE( pStmt );
-				filelog("GQuestError.log", "ÀúÀåµÈ Äù½ºÆ®ÀÇ status°¡ Àß¸øµÇ¾ú½À´Ï´Ù : [%s]:%d/%d",
-						m_pOwner->getName().c_str(), qID, sta);
-			}
-			else
-			{
-				if ( sta == QuestStatusInfo::CAN_REPLAY ) continue;
+				// An accepted quest survives logout (KAN-13).
+				hash_map<DWORD, GQuestInfo*>::iterator infoItr = infos.find(qID);
+				if ( infoItr == infos.end() || infoItr->second == NULL )
+				{
+					filelog("GQuestError.log", "in-progress quest is no longer in the quest data, dropping it : [%s]:%d/%d",
+							m_pOwner->getName().c_str(), qID, sta);
+					continue;
+				}
 
+				GQuestStatus* pStatus = new GQuestStatus(m_pOwner, infoItr->second);
+				pStatus->setStatus(sta);
+				m_QuestStatuses[qID] = pStatus;
+				restoring.push_back(qID);
+			}
+			else if ( sta == QuestStatusInfo::COMPLETE || sta == QuestStatusInfo::FAIL )
+			{
 				m_QuestStatuses[qID] = new GQuestStatus(m_pOwner, qID);
 				m_QuestStatuses[qID]->setStatus(sta);
+			}
+			else if ( sta != QuestStatusInfo::CAN_REPLAY )
+			{
+				filelog("GQuestError.log", "saved quest has an unexpected status : [%s]:%d/%d",
+						m_pOwner->getName().c_str(), qID, sta);
+				continue;
 			}
 
 			if ( ( qID == 1001 || qID == 2001 || qID == 3001 ) && sta == QuestStatusInfo::COMPLETE )
@@ -72,6 +90,58 @@ void GQuestManager::load()
 		}
 
 		SAFE_DELETE(pStmt);
+
+		if ( !restoring.empty() )
+		{
+			list<DWORD> broken;
+
+			pStmt = g_pDatabaseManager->getConnection("DARKEDEN")->createStatement();
+			pResult = pStmt->executeQuery("SELECT QuestID, Cond, Position, Status, NumArg, StrArg, State FROM GQuestMissionSave WHERE OwnerID='%s' ORDER BY QuestID, Cond, Position",
+					m_pOwner->getName().c_str() );
+
+			while ( pResult->next() )
+			{
+				DWORD qID = pResult->getDWORD(1);
+				if ( find(restoring.begin(), restoring.end(), qID) == restoring.end() ) continue;
+				if ( find(broken.begin(), broken.end(), qID) != broken.end() ) continue;
+
+				GQuestStatus* pStatus = getGQuestStatus(qID);
+				if ( pStatus == NULL ) continue;
+
+				BYTE cond = pResult->getBYTE(2);
+				WORD position = pResult->getWORD(3);
+				if ( !pStatus->restoreMission(cond, position, pResult->getBYTE(4), pResult->getDWORD(5),
+							pResult->getString(6), pResult->getString(7)) )
+				{
+					filelog("GQuestError.log", "cannot restore a saved mission (quest data changed?), quest is offered again : [%s]:%u cond %u pos %u",
+							m_pOwner->getName().c_str(), (unsigned int)qID, (unsigned int)cond, (unsigned int)position);
+					broken.push_back(qID);
+				}
+			}
+
+			SAFE_DELETE(pStmt);
+
+			list<DWORD>::iterator qItr = restoring.begin();
+			for ( ; qItr != restoring.end() ; ++qItr )
+			{
+				GQuestStatus* pStatus = getGQuestStatus(*qItr);
+				if ( pStatus == NULL ) continue;
+
+				if ( find(broken.begin(), broken.end(), *qItr) != broken.end() )
+				{
+					// forget the attempt; refreshQuest() offers the quest again if it still applies
+					pStatus->initMissions();
+					pStatus->setStatus( QuestStatusInfo::CAN_REPLAY );
+					pStatus->save();
+					pStatus->deleteMissions();
+					m_QuestStatuses.erase(*qItr);
+					SAFE_DELETE( pStatus );
+					continue;
+				}
+
+				pStatus->finishRestore();
+			}
+		}
 	}
 	END_DB(pStmt);
 
@@ -108,6 +178,26 @@ void GQuestManager::clear()
 	{
 		m_EventMissions[i].clear();
 	}
+}
+
+void GQuestManager::save()
+	throw(Error)
+{
+	__BEGIN_TRY
+
+	HashMapGQuestStatusItr itr = m_QuestStatuses.begin();
+	HashMapGQuestStatusItr endItr = m_QuestStatuses.end();
+
+	for ( ; itr != endItr ; ++itr )
+	{
+		GQuestStatus* pStatus = itr->second;
+		if ( pStatus == NULL || pStatus->getGQuestInfo() == NULL ) continue;
+		if ( pStatus->getStatus() != QuestStatusInfo::DOING && pStatus->getStatus() != QuestStatusInfo::SUCCESS ) continue;
+
+		pStatus->persist();
+	}
+
+	__END_CATCH
 }
 
 void GQuestManager::refreshQuest(bool sendPacket)
@@ -207,6 +297,8 @@ void GQuestManager::accept(DWORD qID)
 	gcModify.setInfo( pQS );
 	gcModify.setType( GCGQuestStatusModify::CURRENT );
 	m_pOwner->getPlayer()->sendPacket( &gcModify );
+
+	pQS->persist();
 }
 
 void GQuestManager::cancel(DWORD qID)
@@ -233,6 +325,8 @@ void GQuestManager::cancel(DWORD qID)
 
 	pQS->setStatus( QuestStatusInfo::CAN_REPLAY );
 	pQS->cleanUpMissions();
+	pQS->save();
+	pQS->persist();
 
 	GCGQuestStatusModify gcModify;
 	gcModify.setInfo( pQS );
@@ -298,6 +392,7 @@ void GQuestManager::blooddrain()
 			gcSM.setInfo( pBloodDrainMission->m_pParent );
 			gcSM.setType( GCGQuestStatusModify::NO_MODIFY );
 			m_pOwner->getPlayer()->sendPacket( &gcSM );
+			pBloodDrainMission->m_pParent->saveMissions();
 		}
 
 		// -_- ¶«»§;
@@ -396,6 +491,10 @@ void GQuestManager::killed()
 		if ( pKilledMission->getGoal() <= pKilledMission->getCurrent() )
 		{
 			pKilledMission->m_pParent->update();
+		}
+		else
+		{
+			pKilledMission->m_pParent->saveMissions();
 		}
 
 		// -_- ¶«»§;

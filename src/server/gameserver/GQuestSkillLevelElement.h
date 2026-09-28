@@ -3,6 +3,7 @@
 
 #include "GQuestElement.h"
 #include "GQuestStatus.h"
+#include "GQuestMissionState.h"
 
 class SlayerSkillSlot;
 
@@ -16,6 +17,8 @@ public:
 	bool	isSuccess() const { return m_bSuccess; }
 
 	string	getMissionName() const { return "SkillLevelMission"; }
+	string	saveState() const { return GQuestMissionState::fromBool(m_bSuccess); }
+	void	loadState(const string& s) { m_bSuccess = GQuestMissionState::toBool(s); }
 private:
 	bool	m_bSuccess;
 	SkillLevel_t	m_Goal;

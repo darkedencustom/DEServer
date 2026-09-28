@@ -3,6 +3,7 @@
 
 #include "GQuestElement.h"
 #include "GQuestStatus.h"
+#include "GQuestMissionState.h"
 
 class GQuestEventPartyMission : public GQuestMission
 {
@@ -13,6 +14,8 @@ public:
 	void	meet() { m_bMet = true; }
 
 	string	getMissionName() const { return "EventPartyMission"; }
+	string	saveState() const { return GQuestMissionState::fromBool(m_bMet); }
+	void	loadState(const string& s) { m_bMet = GQuestMissionState::toBool(s); }
 private:
 	bool	m_bMet;
 };

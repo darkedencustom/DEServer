@@ -3,6 +3,7 @@
 
 #include "GQuestElement.h"
 #include "GQuestStatus.h"
+#include "GQuestMissionState.h"
 #include <vector>
 #include <list>
 #include <algorithm>
@@ -18,6 +19,8 @@ public:
 	bool	isVisited(DWORD target) { return find(m_VisitedList.begin(), m_VisitedList.end(), target) != m_VisitedList.end(); }
 
 	string	getMissionName() const { return "TravelMission"; }
+	string	saveState() const { return GQuestMissionState::fromList(m_TargetList) + ";" + GQuestMissionState::fromList(m_VisitedList); }
+	void	loadState(const string& s) { string a, b; GQuestMissionState::split2(s, a, b); GQuestMissionState::toList(a, m_TargetList); GQuestMissionState::toList(b, m_VisitedList); }
 	void	updateStr();
 
 	vector<DWORD>&	getTargetList() { return m_TargetList; }

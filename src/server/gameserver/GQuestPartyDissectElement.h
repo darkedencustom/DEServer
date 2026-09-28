@@ -3,6 +3,7 @@
 
 #include "GQuestElement.h"
 #include "GQuestStatus.h"
+#include "GQuestMissionState.h"
 #include <vector>
 #include <list>
 #include <algorithm>
@@ -17,6 +18,8 @@ public:
 	bool	isTarget(SpriteType_t target) { return find(m_TargetList.begin(), m_TargetList.end(), target) != m_TargetList.end(); }
 
 	string	getMissionName() const { return "PartyDissectMission"; }
+	string	saveState() const { return GQuestMissionState::fromList(m_TargetList); }
+	void	loadState(const string& s) { GQuestMissionState::toList(s, m_TargetList); }
 
 	vector<SpriteType_t>&	getTargetList() { return m_TargetList; }
 private:

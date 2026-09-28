@@ -3,6 +3,7 @@
 
 #include "GQuestElement.h"
 #include "GQuestStatus.h"
+#include "GQuestMissionState.h"
 #include <vector>
 #include <algorithm>
 
@@ -16,6 +17,8 @@ public:
 	bool	isTarget(MonsterType_t target) { return find(m_TargetList.begin(), m_TargetList.end(), target) != m_TargetList.end(); }
 
 	string	getMissionName() const { return "KillMonsterMission"; }
+	string	saveState() const { return GQuestMissionState::fromDWORD(m_Current) + ";" + GQuestMissionState::fromList(m_TargetList); }
+	void	loadState(const string& s) { string a, b; GQuestMissionState::split2(s, a, b); m_Current = GQuestMissionState::toDWORD(a); m_NumArg = m_Current; GQuestMissionState::toList(b, m_TargetList); }
 
 	vector<MonsterType_t>&	getTargetList() { return m_TargetList; }
 private:

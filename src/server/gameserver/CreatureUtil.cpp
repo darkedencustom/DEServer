@@ -2816,6 +2816,7 @@ void deletePC( PlayerCreature* pPC ) throw(Error)
 		pStmt->executeQuery("DELETE FROM CoreZapObject WHERE OwnerID = '" + ownerID + "'");
 		pStmt->executeQuery("DELETE FROM GQuestItemObject WHERE OwnerID = '" + ownerID + "'");
 		pStmt->executeQuery("DELETE FROM GQuestSave WHERE OwnerID = '" + ownerID + "'");
+		pStmt->executeQuery("DELETE FROM GQuestMissionSave WHERE OwnerID = '" + ownerID + "'");
 		pStmt->executeQuery("DELETE FROM TrapItemObject WHERE OwnerID = '" + ownerID + "'");
 
 		////////////////////////////////////////////////////////////

@@ -3,6 +3,7 @@
 
 #include "GQuestElement.h"
 #include "GQuestStatus.h"
+#include "GQuestMissionState.h"
 #include "Timeval.h"
 
 class GQuestTimeMission : public GQuestMission
@@ -14,6 +15,8 @@ public:
 	void updateArg() { m_NumArg = timediff( gCurrentTime, m_EndTime ).tv_sec / 60; }
 
 	string	getMissionName() const { return "TimeMission"; }
+	string	saveState() const { return GQuestMissionState::fromDWORD((DWORD)m_EndTime.tv_sec); }
+	void	loadState(const string& s) { m_EndTime.tv_sec = GQuestMissionState::toDWORD(s); m_EndTime.tv_usec = 0; updateArg(); }
 private:
 	Timeval	m_EndTime;
 };

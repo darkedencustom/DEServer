@@ -3,6 +3,7 @@
 
 #include "GQuestElement.h"
 #include "GQuestStatus.h"
+#include "GQuestMissionState.h"
 
 class GQuestAdvancementClassLevelMission : public GQuestMission
 {
@@ -14,6 +15,8 @@ public:
 	bool	isSuccess() const { return m_bSuccess; }
 
 	string	getMissionName() const { return "AdvancementClassLevelMission"; }
+	string	saveState() const { return GQuestMissionState::fromBool(m_bSuccess); }
+	void	loadState(const string& s) { m_bSuccess = GQuestMissionState::toBool(s); }
 private:
 	bool	m_bSuccess;
 	Level_t	m_Goal;

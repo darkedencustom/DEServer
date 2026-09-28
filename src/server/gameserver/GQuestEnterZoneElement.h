@@ -3,6 +3,7 @@
 
 #include "GQuestElement.h"
 #include "GQuestStatus.h"
+#include "GQuestMissionState.h"
 
 class GQuestEnterZoneMission : public GQuestMission
 {
@@ -13,6 +14,8 @@ public:
 	bool	isSuccess() const { return m_bSuccess; }
 
 	string	getMissionName() const { return "EnterZoneMission"; }
+	string	saveState() const { return GQuestMissionState::fromBool(m_bSuccess); }
+	void	loadState(const string& s) { m_bSuccess = GQuestMissionState::toBool(s); }
 
 	ZoneID_t getZoneID() { return m_ZoneID; }
 	void setZoneID(ZoneID_t ZoneID) { m_ZoneID = ZoneID; }

@@ -3,6 +3,7 @@
 
 #include "GQuestElement.h"
 #include "GQuestStatus.h"
+#include "GQuestMissionState.h"
 
 class GQuestKilledMission : public GQuestMission
 {
@@ -13,6 +14,8 @@ public:
 	void	increase() { m_Current++; }
 
 	string	getMissionName() const { return "KilledMission"; }
+	string	saveState() const { return GQuestMissionState::fromDWORD(m_Current); }
+	void	loadState(const string& s) { m_Current = GQuestMissionState::toDWORD(s); }
 private:
 	DWORD	m_Current;
 	DWORD	m_Goal;

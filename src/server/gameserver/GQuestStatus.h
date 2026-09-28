@@ -16,6 +16,11 @@ public:
 	vector<GQuestElement*>::const_iterator m_Position;
 	GQuestStatus*	m_pParent;
 	virtual string	getMissionName() const = 0;
+
+	// Element-specific progress that m_NumArg/m_StrArg do not carry (kill targets, flags, counters).
+	// Written to GQuestMissionSave.State and read back on login; see GQuestMissionState.h.
+	virtual string	saveState() const { return ""; }
+	virtual void	loadState(const string& state) { }
 };
 
 class GQuestStatus : public QuestStatusInfo
@@ -39,6 +44,16 @@ public:
 
 	void	cleanUpMissions();
 	void	save() throw(Error);
+
+	// In-progress persistence (KAN-13). A DOING/SUCCESS quest keeps its GQuestSave row and one
+	// GQuestMissionSave row per mission; anything else clears the mission rows.
+	void	persist() throw(Error);
+	void	saveMissions() throw(Error);
+	void	deleteMissions() throw(Error);
+	bool	restoreMission(BYTE cond, WORD position, BYTE status, DWORD numArg, const string& strArg, const string& state);
+	void	finishRestore();
+
+	GQuestInfo*	getGQuestInfo() const { return m_pGQuestInfo; }
 
 private:
 	PlayerCreature*	m_pOwner;

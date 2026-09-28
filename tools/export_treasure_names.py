@@ -88,6 +88,23 @@ def native(s):
     return s
 
 
+REQ_KEYS = {'STR': 'STR %s', 'DEX': 'DEX %s', 'INT': 'INT %s', 'LEV': 'Lv %s', 'SUM': 'stat sum %s',
+            'ADV': 'Adv %s', 'GEN': None}
+
+
+def requirement(req_ability):
+    """'(GEN,1)(SUM,30)' -> 'M, stat sum 30' (ItemInfo.cpp parseReqAbility keys: STR DEX INT LEV GEN SUM ADV)."""
+    parts = []
+    for key, val in re.findall(r'\(([A-Z]+),(\d+)\)', req_ability or ''):
+        if key == 'GEN':
+            parts.append({'1': 'M', '2': 'F'}.get(val, 'GEN ' + val))
+        elif key in REQ_KEYS:
+            parts.append(REQ_KEYS[key] % val)
+        else:
+            parts.append('%s %s' % (key, val))
+    return ', '.join(parts)
+
+
 def bin_base(ename, monster_class):
     if monster_class:
         return 'Class%d' % monster_class
@@ -126,13 +143,17 @@ def main():
             sel = ['ItemType',
                    'EName' if 'EName' in cols else "''",
                    'Name' if 'Name' in cols else "''",
-                   'ItemLevel' if 'ItemLevel' in cols else '0']
+                   'ItemLevel' if 'ItemLevel' in cols else '0',
+                   'ReqAbility' if 'ReqAbility' in cols else "''"]
             found = rows(db, "SELECT %s FROM %s ORDER BY ItemType" % (', '.join(sel), table))
             for r in found:
                 t = int(r[0])
                 rec = {'e': r[1], 'n': native(r[2])}
                 if r[3] not in ('0', '', 'NULL'):
-                    rec['lvl'] = int(r[3])
+                    rec['tier'] = int(r[3])     # ItemLevel: the server's item tier index, not a player requirement
+                req = requirement(r[4])
+                if req:
+                    rec['req'] = req
                 if (cid, t) in unique:
                     rec['unique'] = True
                 entry['types'][t] = rec

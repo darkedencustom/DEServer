@@ -83,8 +83,15 @@ def pack_bin(treasures):
     return b''.join(out)
 
 
-def is_heart_entry(t):
-    return len(t['classes']) == 1 and t['classes'][0]['itemClass'] == ITEM_CLASS_COMMON_QUEST_ITEM
+def is_heart_entry(t, heart):
+    # Only this floor's heart-only entry. Other single-purpose class 91 entries (the Burned Original Book from
+    # tools/set_burned_book_drops.py sits in PlumpyBoar) belong to other tools and must survive a re-run.
+    return (len(t['classes']) == 1 and t['classes'][0]['itemClass'] == ITEM_CLASS_COMMON_QUEST_ITEM
+            and [ty['itemType'] for ty in t['classes'][0]['types']] == [heart])
+
+
+def is_single_class_entry(t):
+    return len(t['classes']) == 1
 
 
 def main():
@@ -99,9 +106,14 @@ def main():
         for race in RACES:
             path = os.path.join(DATA, '%s.%s.bin' % (name, race))
             before = open(path, 'rb').read()
-            treasures = [t for t in read_bin(path) if not is_heart_entry(t)]
+            loaded = read_bin(path)
+            # keep the heart entry where it is (other tools append their own entries after it)
+            slot = next((i for i, t in enumerate(loaded) if is_heart_entry(t, heart)), None)
+            treasures = [t for t in loaded if not is_heart_entry(t, heart)]
             old = []
             for t in treasures:
+                if is_single_class_entry(t):
+                    continue            # another tool's entry; the old heart slot was inside the main entry
                 for c in t['classes']:
                     if c['itemClass'] == ITEM_CLASS_COMMON_QUEST_ITEM and c['ratio']:
                         if [ty['itemType'] for ty in c['types']] != [heart]:
@@ -109,7 +121,7 @@ def main():
                                 path, c['itemClass'], [ty['itemType'] for ty in c['types']], heart))
                         old.append(c['ratio'])
                         c['ratio'] = 0
-            treasures.append({'ratios': [999999] * 4, 'classes': [{
+            treasures.insert(len(treasures) if slot is None else slot, {'ratios': [999999] * 4, 'classes': [{
                 'itemClass': ITEM_CLASS_COMMON_QUEST_ITEM, 'ratio': CLASS_RATIO,
                 'types': [{'itemType': heart, 'ratio': weight, 'options': []}]}]})
             after = pack_bin(treasures)

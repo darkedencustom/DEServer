@@ -3,6 +3,7 @@
 
 #include "GQuestElement.h"
 #include "GQuestStatus.h"
+#include "GQuestMissionState.h"
 
 class GQuestClearDynamicZoneMission : public GQuestMission
 {
@@ -13,6 +14,8 @@ public:
 	void	clear(ZoneID_t zoneID) { if ( m_TargetZoneID == zoneID ) m_bClear = true; }
 
 	string	getMissionName() const { return "ClearDynamicZoneMission"; }
+	string	saveState() const { return GQuestMissionState::fromBool(m_bClear); }
+	void	loadState(const string& s) { m_bClear = GQuestMissionState::toBool(s); }
 private:
 	bool	m_bClear;
 	ZoneID_t	m_TargetZoneID;
