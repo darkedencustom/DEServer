@@ -92,3 +92,19 @@ SELECT CharID, RetiredName, PlayerID FROM Slayer WHERE RetiredName IS NOT NULL;
 A name-keyed column that is not called `OwnerID` has to be listed in
 `CharacterNameRef`, or a reused name inherits its rows. Add the row in a
 migration when such a table appears.
+
+## Rolling back
+
+Migrations only go forward, so a change that may need undoing ships its own
+rollback in `rollback/`, named after the migration (`rollback/1.3.0_ExpCurve_rollback.sql`
+undoes `migrations/1.3.0_ExpCurve.sql`). `deploy_db.py` never runs these; run
+one by hand against the same database, then restart the gameserver:
+
+```bash
+mysql --default-character-set=utf8mb4 -h 127.0.0.1 -u elcastle -p DARKEDEN < db/rollback/1.3.0_ExpCurve_rollback.sql
+```
+
+A rollback restores what the migration saved into its `*_Backup_*` tables and
+deletes the migration's `SchemaVersion` row, so the database reports the
+previous version again. The next deploy would re-apply the migration unless
+its file is removed or renamed first.

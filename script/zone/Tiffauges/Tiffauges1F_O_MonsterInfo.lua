@@ -31,7 +31,7 @@ BalBerithInfo =
 				"DIRECTIVE END",
 	DeadAI = "",
 	Enhance = "(EXP,400)"..
-						"(HP,100)"..
+						"(HP,10)"..
 						"(TOHIT,27)"..
 						"(DEFENCE,-60)"..
 						"(DAMAGE,-50)"..
@@ -71,7 +71,7 @@ BerithInfo =
 				"DIRECTIVE END",		
 	DeadAI = "",
 	Enhance = "(EXP,400)"..
-						"(HP,100)"..
+						"(HP,10)"..
 						"(TOHIT,36)"..
 						"(DEFENCE,-60)"..
 						"(DAMAGE,-50)"..
@@ -111,7 +111,7 @@ ValkyrjaInfo =
 				"DIRECTIVE END",	
 	DeadAI = "",
 	Enhance = "(EXP,400)"..
-						"(HP,100)"..
+						"(HP,10)"..
 						"(TOHIT,8)"..
 						"(DEFENCE,-60)"..
 						"(DAMAGE,-50)"..

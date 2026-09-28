@@ -7,7 +7,7 @@ BalBerithInfo =
 	Dir = 2,
 	AI = "",
 	DeadAI = "",
-	Enhance = ""
+	Enhance = "(EXP,200)"
 }
 
 BerithInfo =
@@ -19,7 +19,7 @@ BerithInfo =
 	Dir = 2,
 	AI = "",
 	DeadAI = "",
-	Enhance = ""
+	Enhance = "(EXP,200)"
 }
 
 ValkyrjaInfo =
@@ -31,6 +31,6 @@ ValkyrjaInfo =
 	Dir = 2,
 	AI = "",
 	DeadAI = "",
-	Enhance = ""
+	Enhance = "(EXP,200)"
 }
 
