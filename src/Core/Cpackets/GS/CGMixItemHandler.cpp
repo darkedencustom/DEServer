@@ -232,7 +232,6 @@ void CGMixItemHandler::executeMix(CGMixItem* pPacket, Player* pPlayer, Item* pIt
 		return;
 	}
 	
-	unsigned int MixingRatio = rand()%100;
 	bool Success = true;
 	bool IMImixItem = false;
 	
@@ -243,12 +242,9 @@ void CGMixItemHandler::executeMix(CGMixItem* pPacket, Player* pPlayer, Item* pIt
 	{
 		IMImixItem = true;
 		cout<< "New Mix Item Use ... =_=;; " << endl;
-		
-		if(MixingRatio < 60)
-		{
-			Success = false;
-			cout<< "New Mix Item Use Fail " << endl;
-		}	
+
+		// The untyped forges (Weapon/Armor/Accessory Mixing Forge) used to fail 60% of
+		// the time (rand()%100 < 60). They always succeed now, like the typed ones.
 	}
 
 	MixingItemInfo* pInfo = dynamic_cast<MixingItemInfo*>(g_pItemInfoManager->getItemInfo( pItem->getItemClass(), pItem->getItemType() ));

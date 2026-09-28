@@ -62,6 +62,14 @@
 
 	#include "SystemAvailabilitiesManager.h"
 		#include "VariableManager.h"	//by kim
+
+	// Dice range for the Blue Bird / Blue Drop rolls. A 0 from AttrInfo made
+	// `rand() % range` divide by zero and crash the gameserver.
+	static int enchantDiceRange(VariableType vt)
+	{
+		int range = g_pVariableManager->getVariable(vt);
+		return (range > 0) ? range : 10000;
+	}
 		
 #ifdef VERSION_THIRD_ENCHANT_1
 	#include "ItemClassInfo.h"
@@ -2109,7 +2117,7 @@ void CGAddItemToItemHandler::execute (CGAddItemToItem* pPacket , Player* pPlayer
 		{
 			// 첫번째 옵션의 인챈트 확률은 블루드롭 2의 확률에 따른다.
 			int succeedRatio = pFirstOptionInfo->getUpgradeSecondRatio() * pItemInfo->getUpgradeRatio();
-			int dice = rand()% g_pVariableManager->getVariable(EVENT_BLUE_BIRD_ENCHANT_RATIO);	//by kim old 10000
+			int dice = rand() % enchantDiceRange(EVENT_BLUE_BIRD_ENCHANT_RATIO);	//by kim old 10000
 
 			//cout << "첫번째 옵션 : " << pFirstOptionInfo->getHName() << " 인챈트 확률 " << succeedRatio << endl;
 
@@ -2209,7 +2217,7 @@ void CGAddItemToItemHandler::execute (CGAddItemToItem* pPacket , Player* pPlayer
 		{
 			// 두번째 옵션의 인챈트 확률은 첫번째 옵션의 성공여부에 따른다.
 			int succeedRatio = g_pOptionInfoManager->getRareUpgradeRatio( secondOption, bFirstSucceed ) * pItemInfo->getUpgradeRatio();
-			int dice = rand() %g_pVariableManager->getVariable(EVENT_BLUE_BIRD_ENCHANT_RATIO);	//by kim old 10000
+			int dice = rand() % enchantDiceRange(EVENT_BLUE_BIRD_ENCHANT_RATIO);	//by kim old 10000
 
 			//cout << "두번째 옵션 : " << pSecondOptionInfo->getHName() << " 인챈트 확률 " << succeedRatio << endl;
 
@@ -2513,7 +2521,7 @@ void CGAddItemToItemHandler::execute (CGAddItemToItem* pPacket , Player* pPlayer
 //			cout << "옵션 " << pOptionInfo->getHName() << " 인챈트 확률 : " << succeedRatio << endl;
 			
 			//int dice = rand()%10000;
-			int dice = rand() % g_pVariableManager->getVariable(EVENT_BLUE_DROP_ENCHANT_RATIO);
+			int dice = rand() % enchantDiceRange(EVENT_BLUE_DROP_ENCHANT_RATIO);
 
 			bool bSucceed = (dice < succeedRatio);
 

@@ -304,6 +304,12 @@ VariableManager::VariableManager()
 	m_Variables[ALL_MONSTER_DROP_ITEM_EVENT_STAR] = 0;
 	
 	m_Variables[ALL_MONSTER_DROP_ITEM_RUDOLPH_PATTERN] = 0;
+
+	// Enchant dice ranges (the old hard-coded 10000). AttrInfo has no rows
+	// for these, so without a default they read 0 and `rand() % ratio` in
+	// CGAddItemToItemHandler killed the gameserver (Blue Bird, Blue Drop).
+	m_Variables[EVENT_BLUE_DROP_ENCHANT_RATIO] = 10000;
+	m_Variables[EVENT_BLUE_BIRD_ENCHANT_RATIO] = 10000;
 		
 		
 #if defined(__THAILAND_SERVER__) || defined(__CHINA_SERVER__)
