@@ -82,7 +82,7 @@ SkillResultType IllusionInversion::execute(Slayer* pSlayer, ObjectID_t TargetObj
 	if( result.bSuccess && rand()%100 < successRatio )
 	{
 		GCModifyInformation gcMI;
-		pWeapon->setSilver( pWeapon->getSilver() - 40 );
+		pWeapon->setSilver( max( 0, (int)pWeapon->getSilver() - 40 ) );
 		gcMI.addShortData( MODIFY_SILVER_DURABILITY, pWeapon->getSilver() );
 		pSlayer->getPlayer()->sendPacket(&gcMI);
 

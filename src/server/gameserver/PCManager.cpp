@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include "Assert.h"
 #include "PCManager.h"
+#include "DraculaCastleManager.h"
 #include "GamePlayer.h"
 #include "PlayerCreature.h"
 #include "Creature.h"
@@ -242,6 +243,7 @@ void PCManager::processCreatures ()
 					dropRelicToZone(pCreature);
 					dropFlagToZone(pCreature);
 					dropSweeperToZone( pCreature );
+					g_DraculaCastleManager.dropMihnea( pCreature, true, "carrier died" );
 
 					///////////////////////////////////////////////////////////////////
 					// 죽을 때 성향에 따라서 아이템을 떨어뜨린다.

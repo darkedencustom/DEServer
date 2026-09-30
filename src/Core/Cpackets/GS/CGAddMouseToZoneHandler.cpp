@@ -29,6 +29,7 @@
 	#include "EffectHasSlayerRelic.h"
 	#include "EffectHasVampireRelic.h"
 	#include "EffectRelicLock.h"
+#include "DraculaCastleManager.h"
 	#include "EffectRelicPosition.h"
 
 	#include "Belt.h"
@@ -59,6 +60,7 @@ void CGAddMouseToZoneHandler::execute (CGAddMouseToZone* pPacket , Player* pPlay
 	GamePlayer* pGamePlayer = dynamic_cast<GamePlayer*>(pPlayer);
 	Creature*   pCreature   = pGamePlayer->getCreature();
 	bool        Success     = false;
+	bool        bPlaceMihnea = false;
 
 	//EffectHasRelic* pEffect = NULL;
 
@@ -129,7 +131,9 @@ void CGAddMouseToZoneHandler::execute (CGAddMouseToZone* pPacket , Player* pPlay
 		// 나중엔 아이템이 떨어진 Tile을 찾아야 한다.
 		// CREATE_TYPE_GAME인 아이템은 10초 후 사라지게 한다.
 		Turn_t decayTurn = 0;
-		if (pItem->getCreateType()==Item::CREATE_TYPE_GAME)
+		if (DraculaCastleManager::isMihnea(pItem))
+			decayTurn = DraculaCastleManager::FLOOR_TIMEOUT * 10 * 2;	// the ritual removes it at FLOOR_TIMEOUT; this is the backstop
+		else if (pItem->getCreateType()==Item::CREATE_TYPE_GAME)
 			decayTurn = 100;
 
 		TPOINT pt = pZone->addItem(pItem, pCreature->getX(), pCreature->getY(), true, decayTurn);
@@ -205,6 +209,16 @@ void CGAddMouseToZoneHandler::execute (CGAddMouseToZone* pPacket , Player* pPlay
 					pItem->setFlag( Effect::EFFECT_CLASS_RELIC_LOCK );
 					pItem->getEffectManager().addEffect( pLock );
 				}
+			}
+
+			// Dracula Castle: the Mihnea put down beside the open altar is placed on it (the altar is an object,
+			// not a drop target); anywhere else it lies on the floor under the ritual's timer
+			if ( DraculaCastleManager::isMihnea( pItem ) )
+			{
+				if ( g_DraculaCastleManager.canPlaceHere( pPC ) )
+					bPlaceMihnea = true;
+				else
+					g_DraculaCastleManager.onMihneaDropped( pPC, pItem, pZone, pt.x, pt.y );
 			}
 
 			if ( pItem->getItemClass() == Item::ITEM_CLASS_SWEEPER )
@@ -316,7 +330,8 @@ void CGAddMouseToZoneHandler::execute (CGAddMouseToZone* pPacket , Player* pPlay
 
 			Success = true;
 
-			if ( pItem->isQuestItem() || ( pItem->getItemClass()==Item::ITEM_CLASS_MOON_CARD && pItem->getItemType()==2 ) )
+			if ( bPlaceMihnea || !DraculaCastleManager::isMihnea( pItem )
+				&& ( pItem->isQuestItem() || ( pItem->getItemClass()==Item::ITEM_CLASS_MOON_CARD && pItem->getItemType()==2 ) ) )
 			{
 				// 퀘스트 아이템일 경우 바로 지운다.
 				// 바보 클라이언트 때문에 마우스에 있는거 바로 못 지운다.
@@ -327,6 +342,17 @@ void CGAddMouseToZoneHandler::execute (CGAddMouseToZone* pPacket , Player* pPlay
 				gcDeleteObject.setObjectID( pItem->getObjectID() );
 
 				pZone->broadcastPacket( pt.x, pt.y, &gcDeleteObject );
+
+				if ( bPlaceMihnea )
+				{
+					string msg = g_DraculaCastleManager.placeMihnea( pPC, pItem );	// takes the item
+					if ( !msg.empty() )
+					{
+						GCSystemMessage gcSystemMessage;
+						gcSystemMessage.setMessage( msg );
+						pPlayer->sendPacket( &gcSystemMessage );
+					}
+				}
 			}
 		} 
 		else 

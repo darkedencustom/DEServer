@@ -5,6 +5,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #include "PlayerCreature.h"
+#include "DraculaCastleManager.h"
 #include "Stash.h"
 #include "DB.h"
 #include "Item.h"
@@ -2952,6 +2953,7 @@ void PlayerCreature::OnLogOut()
 
 	dropFlagToZone( this, false );
 	dropSweeperToZone( this );
+	g_DraculaCastleManager.returnMihnea( this, "carrier logged out", false );
 	
 	if ( g_pPKZoneInfoManager->isPKZone( getZoneID() ) )
 	{

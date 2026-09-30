@@ -26,6 +26,7 @@
 	#include "EffectHasVampireRelic.h"
 	#include "EffectRelicPosition.h"
 	#include "EffectHasSweeper.h"
+#include "DraculaCastleManager.h"
 	#include "ZoneUtil.h"
 	#include "CombatInfoManager.h"
 	#include "ZoneGroupManager.h"
@@ -175,6 +176,10 @@ void CGAddZoneToMouseHandler::execute (CGAddZoneToMouse* pPacket , Player* pPlay
 			{
 				addSimpleCreatureEffect( pPC, Effect::EFFECT_CLASS_HAS_FLAG );
 			}
+
+			// Dracula Castle: the Mihnea picked up off the floor
+			if ( DraculaCastleManager::isMihnea( pItem ) )
+				g_DraculaCastleManager.onMihneaPickedUp( pPC, pItem );
 
 			if ( pItem->getItemClass() == Item::ITEM_CLASS_SWEEPER )
 			{

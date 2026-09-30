@@ -109,6 +109,9 @@ void CGAttackHandler::execute (CGAttack* pPacket , Player* pPlayer)
 			return;
 		}
 
+		// Dracula Castle: carrying the Mihnea forbids attacking, as with a Blood Bible (the client refuses too)
+		if (pCreature->isFlag(Effect::EFFECT_CLASS_HAS_MIHNEA)) return;
+
 		if (pCreature->isSlayer())
 		{ 
 			Slayer* pSlayer = dynamic_cast<Slayer *>(pCreature);

@@ -386,6 +386,7 @@ bool Creature::hasRelicItem() const
 	return m_Flag.test(Effect::EFFECT_CLASS_HAS_SLAYER_RELIC)
 			|| m_Flag.test(Effect::EFFECT_CLASS_HAS_VAMPIRE_RELIC) 
 			|| m_Flag.test(Effect::EFFECT_CLASS_HAS_BLOOD_BIBLE)
+			|| m_Flag.test(Effect::EFFECT_CLASS_HAS_MIHNEA)
 			|| m_Flag.test(Effect::EFFECT_CLASS_HAS_CASTLE_SYMBOL)
 			|| m_Flag.test(Effect::EFFECT_CLASS_DRAGON_EYE)
 #ifdef __CONTRIBUTION_SYSTEM__

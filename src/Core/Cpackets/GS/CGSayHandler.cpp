@@ -135,6 +135,7 @@
 	#include "EffectDeleteItem.h"
 	#include "MikllizzLairManager.h"
 	#include "RodinBossManager.h"
+	#include "DraculaCastleManager.h"
 	#include "EventSurvivalZoneManager.h"
 	#include "PetTypeInfo.h"	//wlzzi
 	
@@ -4289,7 +4290,7 @@ void CGSayHandler::opcommand(GamePlayer* pGamePlayer , string msg, int i)
 			gcSystemMessage.setMessage( g_pStringPool->getString( STRID_NOT_IN_MASTER_LAIR ) );
 		}
 	}
-	else if (command=="invincible")
+	else if (command=="invincible" || command == "invuln")
 	{
 		Creature* pCreature = pGamePlayer->getCreature();
 		Assert(pCreature!=NULL);
@@ -6349,6 +6350,39 @@ void CGSayHandler::opcommand(GamePlayer* pGamePlayer , string msg, int i)
 			pLair->ulnock();
 			gcSystemMessage.setMessage( "Raohm B5F opens now: 30 minutes to clear the Tentacles" );
 		}
+
+		bSendPacket = true;
+	}
+	else if ( command == "startDrac" || command == "resetDrac" || command == "dracDoor" || command == "dracDoorAt"
+		|| command == "dracSeal" || command == "dracStatus" )
+	{
+		// Dracula Castle Mihnea ritual (DraculaCastleManager), usable from any zone.
+		// startDrac: Mihnea's Storage opens within a second (a ritual in progress is reset first).
+		// resetDrac: storage and altar sealed again, the Mihnea removed wherever it is.
+		// dracDoor [up|down]: raise or break the door on the 2F stairs; no argument toggles it.
+		// dracDoorAt x y: hang the door sprite on another tile (placement tuning; the stairs stay blocked).
+		// dracSeal N: show client effect status N on the sealed stands (look tuning, no client change).
+		// dracStatus: where the Mihnea is, the next opening, and whether the door is up.
+		if ( command == "startDrac" )
+			gcSystemMessage.setMessage( g_DraculaCastleManager.forceOpen() );
+		else if ( command == "resetDrac" )
+			gcSystemMessage.setMessage( g_DraculaCastleManager.forceReset() );
+		else if ( command == "dracDoor" )
+			gcSystemMessage.setMessage( g_DraculaCastleManager.forceDoor( trim( value1 ) ) );
+		else if ( command == "dracDoorAt" )
+		{
+			int x = -1, y = -1;
+			sscanf( value1.c_str(), "%d %d", &x, &y );
+			gcSystemMessage.setMessage( g_DraculaCastleManager.forceDoorAt( x, y ) );
+		}
+		else if ( command == "dracSeal" )
+		{
+			int s1 = -1, s2 = -1;
+			sscanf( value1.c_str(), "%d %d", &s1, &s2 );
+			gcSystemMessage.setMessage( g_DraculaCastleManager.forceSeal( s1, s2 ) );
+		}
+		else
+			gcSystemMessage.setMessage( g_DraculaCastleManager.toString() );
 
 		bSendPacket = true;
 	}

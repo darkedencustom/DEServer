@@ -2058,7 +2058,8 @@ long GamePlayer::GetBaseTimeToVerifyMoveSpeed()
 	long lBaseMoveTime = 500;	// milli-second
 
 	if ( m_pCreature->isFlag(Effect::EFFECT_CLASS_HAS_BLOOD_BIBLE) ||
-			m_pCreature->isFlag(Effect::EFFECT_CLASS_HAS_SWEEPER)
+			m_pCreature->isFlag(Effect::EFFECT_CLASS_HAS_SWEEPER) ||
+			m_pCreature->isFlag(Effect::EFFECT_CLASS_HAS_MIHNEA)
 			)
 	{
 		lBaseMoveTime = 1000;

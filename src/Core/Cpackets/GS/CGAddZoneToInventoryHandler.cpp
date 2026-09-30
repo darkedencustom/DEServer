@@ -51,6 +51,7 @@
 	#include "EffectRelicPosition.h"
 
 	#include "EffectHasSweeper.h"
+#include "DraculaCastleManager.h"
 
 	#include "ItemUtil.h"
 
@@ -381,6 +382,10 @@ void CGAddZoneToInventoryHandler::execute (CGAddZoneToInventory* pPacket , Playe
 			{
 				addSimpleCreatureEffect( pPC, Effect::EFFECT_CLASS_HAS_FLAG );
 			}
+
+			// Dracula Castle: the Mihnea picked up off the floor
+			if ( DraculaCastleManager::isMihnea( pItem ) )
+				g_DraculaCastleManager.onMihneaPickedUp( pPC, pItem );
 
 			if ( pItem->getItemClass() == Item::ITEM_CLASS_SWEEPER )
 			{

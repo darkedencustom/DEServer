@@ -184,6 +184,8 @@
 #include "ActionMonsterSummon.h"
 // Dracula Castle
 #include "ActionEnterWithItem.h"
+#include "ActionTakeMihnea.h"
+#include "ActionPlaceMihnea.h"
 ////////////////////////////////////////////////////////////////////////////////
 // constructor
 ////////////////////////////////////////////////////////////////////////////////
@@ -426,6 +428,8 @@ void ActionFactoryManager::init ()
 
 	// Dracula Castle
 	addFactory(new ActionEnterWithItemFactory());
+	addFactory(new ActionTakeMihneaFactory());
+	addFactory(new ActionPlaceMihneaFactory());
 	__END_CATCH
 }
 

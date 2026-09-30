@@ -7,6 +7,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #include "ZoneUtil.h"
+#include "DraculaCastleManager.h"
 #include "Assert.h"
 #include "DB.h"
 #include "Properties.h"
@@ -2286,6 +2287,10 @@ void transportCreature(Creature* pCreature, ZoneID_t TargetZoneID, ZoneCoord_t T
 
 		if ( pCreature->isFlag( Effect::EFFECT_CLASS_HAS_SWEEPER ) );
 			dropSweeperToZone( pCreature );
+
+		// Dracula Castle: the Mihnea stays on 1F; whoever leaves with it sends it back to the storage
+		if ( pCreature->isFlag( Effect::EFFECT_CLASS_HAS_MIHNEA ) && TargetZoneID != DraculaCastleManager::ZONE_1F )
+			g_DraculaCastleManager.returnMihnea( pCreature, "carrier left 1F" );
 		
 		// 성지에서 성지 밖으로 나가거나 성지 밖에서 성지 안으로 들어올때는 initAllStat을 불러준다.
 		if ( pZone->isHolyLand() != pZoneInfo->isHolyLand() )

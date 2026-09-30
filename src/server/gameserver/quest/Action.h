@@ -259,6 +259,8 @@ public:
 
 		ACTION_MONSTER_SUMMON,		// Ruper Island: Altar of Heroes wakes Sius
 		ACTION_ENTER_WITH_ITEM,		// Dracula Castle: Marcus lets players in for a Forbidden Blood
+		ACTION_TAKE_MIHNEA,			// Dracula Castle: Mihnea's Storage hands over the Mihnea
+		ACTION_PLACE_MIHNEA,		// Dracula Castle: the Mihnea Altar takes it and breaks the 2F door
 		ACTION_MAX
 	};
 

@@ -71,7 +71,7 @@ SkillResultType ShineSword::execute(Slayer* pSlayer, ObjectID_t targetObjectID, 
 	if ( result.bSuccess )
 	{
 		GCModifyInformation gcMI;
-		pWeapon->setSilver( pWeapon->getSilver() - 50 );
+		pWeapon->setSilver( max( 0, (int)pWeapon->getSilver() - 50 ) );
 		gcMI.addShortData( MODIFY_SILVER_DURABILITY, pWeapon->getSilver() );
 		pSlayer->getPlayer()->sendPacket(&gcMI);
 

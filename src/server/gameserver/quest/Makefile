@@ -224,7 +224,7 @@ ACTION_OBJS = \
 	ActionEnterPVPSystem.o \
 	ActionPVPSystemSignUp.o \
 	ActionMonsterSummon.o \
-	ActionEnterWithItem.o
+	ActionEnterWithItem.o ActionTakeMihnea.o ActionPlaceMihnea.o
 #	ActionTradeGiftBox.o
 #	ActionGiveTestServerReward.o
 #	ActionGiveEventItem.o

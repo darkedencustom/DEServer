@@ -1268,6 +1268,9 @@ public:
 		EFFECT_CLASS_DRAGON_HURRICANE_2_SMALL				= 982,
 		EFFECT_CLASS_SATELLITE_BOMB_FIRE_2					= 983,
 		EFFECT_CLASS_SHADY_DOUPLE							= 984,
+		EFFECT_CLASS_HAS_MIHNEA								= 985,	// Dracula Castle: carrying the Mihnea (client is shown HAS_SWEEPER)
+		EFFECT_CLASS_MIHNEA_SEAL							= 986,	// Dracula Castle: seal on Mihnea's Storage / Altar (client is shown 570)
+		EFFECT_CLASS_MIHNEA_DOOR							= 987,	// Dracula Castle: door on the 2F stairs, a tile effect (client rows 1016/1017)
 		
 		EFFECT_CLASS_MAX
 	};

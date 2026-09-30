@@ -5,6 +5,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #include "EventMorph.h"
+#include "DraculaCastleManager.h"
 #include "GamePlayer.h"
 #include "PCFinder.h"
 #include "Vampire.h"
@@ -96,6 +97,7 @@ void EventMorph::activate ()
 	dropRelicToZone( pFromCreature );
 	dropFlagToZone( pFromCreature );
 	dropSweeperToZone( pFromCreature );
+	g_DraculaCastleManager.dropMihnea( pFromCreature, true, "carrier morphed" );
 
 	//////////////////////////////////////////////////////////////////////
 	// 각종 존 레벨 정보를 삭제해야 한다.

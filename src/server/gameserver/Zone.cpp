@@ -22,6 +22,7 @@
 #include "MasterLairManager.h"
 #include "MikllizzLairManager.h"
 #include "RodinBossManager.h"
+#include "DraculaCastleManager.h"
 #include "EventSurvivalZoneManager.h"
 #include "WarScheduler.h"
 #include "WarSystem.h"
@@ -9136,6 +9137,10 @@ void Zone::heartbeat ()
 			// gate below so a boss can appear in, and be tracked for, a Rodin zone nobody is in.
 			if ( RodinBossManager::isRodinZone( m_ZoneID ) )
 				g_RodinBossManager.heartbeat( this );
+
+			// Dracula Castle (6050-6052): the Mihnea ritual, the door on the 2F stairs and Vlad's respawn.
+			if ( DraculaCastleManager::isCastleZone( m_ZoneID ) )
+				g_DraculaCastleManager.heartbeat( this );
 
 			if ( getPCCount() > 0 || ( isDynamicZone() && ( m_pDynamicZone->getStatus() == DYNAMIC_ZONE_STATUS_RUNNING ) ) )
 			{

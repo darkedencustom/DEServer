@@ -831,6 +831,7 @@ bool isAbleToMove(Creature* pCreature)
 bool isAbleToUseSelfSkill(Creature* pCreature, SkillType_t SkillType)
 {
 	Assert(pCreature != NULL);
+	if ( pCreature->isFlag( Effect::EFFECT_CLASS_HAS_MIHNEA ) ) return false;	// Dracula Castle: no skills while carrying it
 	if ( pCreature->isFlag( Effect::EFFECT_CLASS_PLEASURE_EXPLOSION ) ) return false;
 
 	// 하이드 걸린 상태에서는 기술을 사용할 수 없다.
@@ -928,6 +929,8 @@ bool isAbleToUseObjectSkill(Creature* pCreature, SkillType_t SkillType)
 {
 	Assert(pCreature != NULL);
 	if ( pCreature->isFlag( Effect::EFFECT_CLASS_PLEASURE_EXPLOSION ) ) return false;
+	// Dracula Castle: a Mihnea carrier cannot attack, like a Blood Bible carrier
+	if ( pCreature->isFlag( Effect::EFFECT_CLASS_HAS_MIHNEA ) ) return false;
 
 	// Dragon Eye 상태는 스킬을 쓸 수 없다.
 	if ( pCreature->isFlag(Effect::EFFECT_CLASS_DRAGON_EYE) )
@@ -1002,6 +1005,8 @@ bool isAbleToUseTileSkill(Creature* pCreature, SkillType_t SkillType)
 {
 	Assert(pCreature != NULL);
 	if ( pCreature->isFlag( Effect::EFFECT_CLASS_PLEASURE_EXPLOSION ) ) return false;
+	// Dracula Castle: a Mihnea carrier cannot attack, like a Blood Bible carrier
+	if ( pCreature->isFlag( Effect::EFFECT_CLASS_HAS_MIHNEA ) ) return false;
 
 	// Dragon Eye 상태는 스킬을 쓸 수 없다.
 	if ( pCreature->isFlag(Effect::EFFECT_CLASS_DRAGON_EYE) )
@@ -1111,6 +1116,7 @@ int getSubInventoryNum(Creature* pCreature)
 
 bool isAbleToUseInventorySkill(Creature* pCreature, BYTE X, BYTE Y, BYTE TX, BYTE TY, SkillType_t SkillType)
 {
+	if ( pCreature->isFlag( Effect::EFFECT_CLASS_HAS_MIHNEA ) ) return false;	// Dracula Castle: no skills while carrying it
 	Assert(pCreature != NULL);
 	if ( pCreature->isFlag( Effect::EFFECT_CLASS_PLEASURE_EXPLOSION ) ) return false;
 
@@ -1345,6 +1351,7 @@ bool isAbleToPickupItem(Creature* pCreature, Item* pItem)
 			|| pCreature->isFlag(Effect::EFFECT_CLASS_OUSTERS_LEVELWAR_HERO_ITEM)
 #endif
 			|| pCreature->isFlag(Effect::EFFECT_CLASS_HAS_SWEEPER) // 20080715 스위퍼 들고 있을 때도 막아야한다. 
+			|| pCreature->isFlag(Effect::EFFECT_CLASS_HAS_MIHNEA)
 			)
 		{
 			return false;

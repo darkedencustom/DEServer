@@ -265,7 +265,7 @@ SkillResultType HeavenGround::execute(Slayer* pSlayer, ZoneCoord_t X, ZoneCoord_
 			}
 
 			GCModifyInformation gcMI;
-			pWeapon->setSilver(pWeapon->getSilver() - 40 );
+			pWeapon->setSilver( max( 0, (int)pWeapon->getSilver() - 40 ) );
 			gcMI.addShortData( MODIFY_SILVER_DURABILITY, pWeapon->getSilver() );
 			pSlayer->getPlayer()->sendPacket(&gcMI);
 

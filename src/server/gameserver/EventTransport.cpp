@@ -5,6 +5,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #include "EventTransport.h"
+#include "DraculaCastleManager.h"
 #include "GamePlayer.h"
 #include "Zone.h"
 #include "PlayerStatus.h"
@@ -114,6 +115,7 @@ void EventTransport::activate ()
 	dropRelicToZone( pPC, bSendPacket );
 	dropFlagToZone( pPC, bSendPacket );
 	dropSweeperToZone( pPC, bSendPacket );
+	g_DraculaCastleManager.returnMihnea( pPC, "carrier was transported", bSendPacket );
 
 	// Zone에서 제거한다.
 	pOldZone->deleteCreature( pCreature, pCreature->getX(), pCreature->getY() );
