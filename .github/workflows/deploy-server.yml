@@ -1,0 +1,162 @@
+name: Deploy server
+
+# Manual button: Actions > Deploy server > Run workflow.
+#
+# Builds gameserver, loginserver and sharedserver from main, uploads them and
+# db/ to the VPS, and runs tools/deploy/deploy_on_vps.sh there:
+#   check   the database's version, and that the new binaries find every
+#           library on the VPS - before any server is touched
+#   stop    bin/stop.local.sh, then wait for the servers to exit
+#   migrate replace db/ and run db/deploy_db.py (the migrations it has not had)
+#   install the new binaries
+#   start   bin/start.local.sh, then check all three are running
+# "skip_build" keeps the binaries on the VPS and deploys only the migrations
+# (the servers still restart, so the gameserver reloads its tables).
+# "dry_run" builds, uploads to a staging folder, runs the checks, prints what a
+# deploy would migrate, and stops nothing.
+#
+# The build runs in an ubuntu:20.04 container: the VPS runs 20.04 binaries and
+# has that release's libraries (libssl1.1, libmysqlclient21, ...). Every build
+# is a full one - the Makefiles track no header dependencies - and ccache keeps
+# it fast after the first run.
+#
+# Anyone with write access can run it. The secrets live in the "production"
+# environment (Settings > Environments), which only main may use; main should
+# only change through a reviewed pull request, so a workflow edited on another
+# branch can never read the key.
+#
+# Environment secrets:
+#   VPS_HOST         address of the VPS
+#   VPS_USER         SSH user
+#   VPS_SSH_KEY      private half of the deploy key
+#   VPS_KNOWN_HOSTS  "<address> ssh-ed25519 AAAA..." host key line for the VPS
+#   VPS_DB_PASSWORD  password of the MySQL account below
+# Environment variables, optional:
+#   VPS_SERVER_DIR   server folder on the VPS (default /root/Desktop/vs)
+#   VPS_DB_USER      MySQL account (default reduxdk)
+#   VPS_DB_NAME      database (default DARKEDEN)
+
+on:
+  workflow_dispatch:
+    inputs:
+      skip_build:
+        description: Keep the server binaries on the VPS; only deploy the database migrations and restart
+        type: boolean
+        default: false
+      dry_run:
+        description: Build and check only; stop, migrate and replace nothing
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# never two deploys at once
+concurrency:
+  group: deploy-server
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    environment: production
+    # the first build has no ccache to lean on
+    timeout-minutes: 300
+    env:
+      SERVER_DIR: ${{ vars.VPS_SERVER_DIR || '/root/Desktop/vs' }}
+      STAGE: ${{ vars.VPS_SERVER_DIR || '/root/Desktop/vs' }}/.deploy
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      # first, so a broken key fails in seconds instead of after the build
+      - name: SSH to the VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<EOF
+          Host vps
+            HostName $VPS_HOST
+            User $VPS_USER
+            IdentityFile ~/.ssh/deploy_key
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            ServerAliveInterval 30
+          EOF
+          ssh vps "test -d '$SERVER_DIR/bin'" || { echo "no $SERVER_DIR/bin on the VPS (set VPS_SERVER_DIR)"; exit 1; }
+
+      # objects, libraries and a debug-info gameserver need more room than the
+      # runner image leaves free
+      - name: Free disk space
+        if: ${{ !inputs.skip_build }}
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - uses: actions/cache/restore@v4
+        if: ${{ !inputs.skip_build }}
+        with:
+          path: ~/.ccache
+          key: ccache-focal-${{ github.sha }}
+          restore-keys: ccache-focal-
+
+      - name: Build the servers (Ubuntu 20.04)
+        id: build
+        if: ${{ !inputs.skip_build }}
+        run: |
+          mkdir -p ~/.ccache
+          docker run --rm -v "$PWD:/src" -v "$HOME/.ccache:/ccache" -w /src \
+            -e CCACHE_DIR=/ccache -e CCACHE_COMPRESS=1 -e CCACHE_MAXSIZE=6G \
+            ubuntu:20.04 bash -c '
+              bash tools/deploy/build_servers.sh --install-deps; rc=$?
+              chown -R '"$(id -u):$(id -g)"' /src /ccache
+              exit $rc'
+
+      # saved straight away, even from a failed build, so the next run starts
+      # with the objects; never when the build did not run (an empty cache would
+      # be the newest and get restored)
+      - uses: actions/cache/save@v4
+        if: ${{ !cancelled() && steps.build.outcome != 'skipped' && !inputs.skip_build }}
+        with:
+          path: ~/.ccache
+          key: ccache-focal-${{ github.sha }}
+
+      - name: Package
+        if: ${{ !inputs.skip_build }}
+        run: |
+          tar -czf servers.tar.gz bin/gameserver bin/loginserver bin/sharedserver
+          ls -la bin/gameserver bin/loginserver bin/sharedserver servers.tar.gz
+
+      # into a staging folder next to the server; nothing live changes yet
+      - name: Upload
+        run: |
+          ssh vps "rm -rf '$STAGE' && mkdir -p '$STAGE'"
+          scp -r db tools/deploy/deploy_on_vps.sh vps:"$STAGE/"
+          if [ -f servers.tar.gz ]; then scp servers.tar.gz vps:"$STAGE/"; fi
+
+      - name: ${{ inputs.dry_run && 'Check (dry run)' || 'Deploy' }}
+        env:
+          DB_PASSWORD: ${{ secrets.VPS_DB_PASSWORD }}
+          DB_USER: ${{ vars.VPS_DB_USER || 'reduxdk' }}
+          DB_NAME: ${{ vars.VPS_DB_NAME || 'DARKEDEN' }}
+          MODE: ${{ inputs.dry_run && 'dry-run' || 'deploy' }}
+        run: |
+          # the password goes over stdin, so it is on no command line on either end
+          set +e
+          printf '%s\n' "$DB_PASSWORD" | ssh vps \
+            "DE_DB_HOST=127.0.0.1 DE_DB_USER='$DB_USER' DE_DB_NAME='$DB_NAME' \
+             bash '$STAGE/deploy_on_vps.sh' '$SERVER_DIR' '$STAGE' $MODE '$GITHUB_SHA'" \
+            2>&1 | tee deploy.log
+          rc=${PIPESTATUS[1]}
+          set -e
+          { echo '```'; cat deploy.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          exit "$rc"
