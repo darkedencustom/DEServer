@@ -6354,7 +6354,7 @@ void CGSayHandler::opcommand(GamePlayer* pGamePlayer , string msg, int i)
 		bSendPacket = true;
 	}
 	else if ( command == "startDrac" || command == "resetDrac" || command == "dracDoor" || command == "dracDoorAt"
-		|| command == "dracSeal" || command == "dracStatus" )
+		|| command == "dracSeal" || command == "dracStatus" || command == "startDrac2" || command == "dracFire" )
 	{
 		// Dracula Castle Mihnea ritual (DraculaCastleManager), usable from any zone.
 		// startDrac: Mihnea's Storage opens within a second (a ritual in progress is reset first).
@@ -6380,6 +6380,14 @@ void CGSayHandler::opcommand(GamePlayer* pGamePlayer , string msg, int i)
 			int s1 = -1, s2 = -1;
 			sscanf( value1.c_str(), "%d %d", &s1, &s2 );
 			gcSystemMessage.setMessage( g_DraculaCastleManager.forceSeal( s1, s2 ) );
+		}
+		else if ( command == "startDrac2" )
+			gcSystemMessage.setMessage( g_DraculaCastleManager.forceLair() );	// break the door + the 2F countdown
+		else if ( command == "dracFire" )
+		{
+			int sec = 0, mn = 0, mx = 0, pct = 0;	// dracFire <seconds> <min> <max> <percent>; 0 keeps a value
+			sscanf( value1.c_str(), "%d %d %d %d", &sec, &mn, &mx, &pct );
+			gcSystemMessage.setMessage( g_DraculaCastleManager.forceFire( sec, mn, mx, pct ) );
 		}
 		else
 			gcSystemMessage.setMessage( g_DraculaCastleManager.toString() );

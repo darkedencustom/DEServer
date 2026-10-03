@@ -2288,6 +2288,9 @@ void transportCreature(Creature* pCreature, ZoneID_t TargetZoneID, ZoneCoord_t T
 		if ( pCreature->isFlag( Effect::EFFECT_CLASS_HAS_SWEEPER ) );
 			dropSweeperToZone( pCreature );
 
+		// Dracula Castle 2F: the lair timer and the screen shake stay behind
+		if ( pZone->getZoneID() == DraculaCastleManager::ZONE_2F && TargetZoneID != DraculaCastleManager::ZONE_2F )
+			g_DraculaCastleManager.leave2F( pCreature );
 		// Dracula Castle: the Mihnea stays on 1F; whoever leaves with it sends it back to the storage
 		if ( pCreature->isFlag( Effect::EFFECT_CLASS_HAS_MIHNEA ) && TargetZoneID != DraculaCastleManager::ZONE_1F )
 			g_DraculaCastleManager.returnMihnea( pCreature, "carrier left 1F" );

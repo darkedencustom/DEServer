@@ -16,6 +16,7 @@
 #include "GDRLairManager.h"
 #include "war/WarSystem.h"
 #include "StringPool.h"
+#include "DraculaCastleManager.h"
 
 //////////////////////////////////////////////////////////////////////////////
 // 슬레이어 셀프 핸들러
@@ -38,6 +39,7 @@ bool SoulChain::isValidTargetZone(Zone *pTargetZone)
 			!pTargetZone->isHolyLand()) && 
 			!pTargetZone->isCastle() && 
 			!pTargetZone->isMasterLair() &&
+			!DraculaCastleManager::isLairZone( pTargetZone->getZoneID() ) &&
 			!g_pPKZoneInfoManager->isPKZone( pTargetZone->getZoneID() 
 		) &&
 		pTargetZone->getZoneID() != 1130 &&

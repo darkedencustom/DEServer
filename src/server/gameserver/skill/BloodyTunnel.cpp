@@ -20,6 +20,7 @@
 #include "TradeManager.h"
 
 #include <cmath>
+#include "DraculaCastleManager.h"
 
 //////////////////////////////////////////////////////////////////////////////
 // 뱀파이어 인벤토리 핸들러
@@ -35,6 +36,7 @@ bool BloodyTunnel::isValidTargetZone(Zone *pTargetZone)
 	bInvalidTargetZone =
 		pTargetZone->isNoPortalZone()
 		|| pTargetZone->isMasterLair()
+		|| DraculaCastleManager::isLairZone( pTargetZone->getZoneID() )
 		// 성 안으로도 막기. by bezz, Sequoia 2003. 1.20.
 		|| pTargetZone->isCastle()
 		|| pTargetZone->isHolyLand()

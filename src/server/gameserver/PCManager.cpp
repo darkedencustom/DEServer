@@ -1116,6 +1116,9 @@ void PCManager::killCreature (Creature* pDeadCreature)
 	ZoneX	= ResurrectCoord.x;
 	ZoneY	= ResurrectCoord.y;
 
+	// Dracula Castle 2F: a death during the lair countdown comes back at the 2F entrance
+	g_DraculaCastleManager.overrideResurrect(pDeadCreature, ZoneID, ZoneX, ZoneY);
+
 	pZoneInfo = g_pZoneInfoManager->getZoneInfo(ZoneID);
 	pZoneGroup = g_pZoneGroupManager->getZoneGroup(pZoneInfo->getZoneGroupID());
 

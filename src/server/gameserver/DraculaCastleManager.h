@@ -27,6 +27,8 @@
 #include "Mutex.h"
 #include <time.h>
 #include <string>
+#include <vector>
+#include <set>
 
 class Zone;
 class NPC;
@@ -50,6 +52,24 @@ public:
 		ALTAR_DELAY      = 5 * 60,		// seconds from the take to the altar's cage dropping
 		FLOOR_TIMEOUT    = 10 * 60,		// seconds a dropped Mihnea lies about before going home
 		COLLAPSE_SECONDS = 0,			// the cage collapse animation (48 frames) before the artifact floats
+		// --- the 2F lair (Vlad II Dracul) ---
+		LAIR_COUNTDOWN_SECONDS = 5 * 60,	// door broken -> Dracula spawns
+		FIRE_INTERVAL_SEC = 1,			// a burst of fire pillars every second ...
+		FIRE_MIN = 10,					// ... this many pillars per burst (dracFire tunes all four live)
+		FIRE_MAX = 16,
+		FIRE_DAMAGE_PERCENT = 100,		// of max HP on the tile, half on the 8 around it (the lairs use 100)
+		FIRE_STRIKE_TURNS = 20,			// swirl first, the pillar rises ~2 s later and strikes (skill Ground Attack: Duration 20; Effect() defaults to never)
+		DRAC_X = 60,					// where Dracula appears (centre room)
+		DRAC_Y = 80,
+		ENTRY_X = 13,					// the 1F -> 2F portal landing: resurrect spot during the countdown
+		ENTRY_Y = 125,
+		ROOM_X1 = 44,					// the centre room + its alcoves: never any fire in here
+		ROOM_Y1 = 54,
+		ROOM_X2 = 88,
+		ROOM_Y2 = 96,
+		AFTERMATH_SECONDS = 10,			// Dracula defeated -> everyone is sent down to 1F
+		RETURN_X = 200,					// 1F, at the foot of the stairs in front of the door
+		RETURN_Y = 45,
 
 		// client effectstatus.inf rows appended for this (build_mihnea_client.py). Creature statuses must stay
 		// below the client's EFFECTSTATUS_MAX (1020) and 1017 must stay inert (creature.en.inf uses it as "no
@@ -78,6 +98,8 @@ public:
 	DraculaCastleManager() throw();
 
 	static bool isCastleZone(ZoneID_t zoneID) { return zoneID >= ZONE_GATE && zoneID <= ZONE_2F; }
+	static bool isLairZone(ZoneID_t zoneID) { return zoneID == ZONE_2F; }	// PvE (all races vs Dracula), no teleport-in
+	enum LairState { LAIR_IDLE, LAIR_COUNTDOWN, LAIR_FIGHT, LAIR_AFTERMATH };
 	static bool isMihnea(const Item* pItem);
 
 	// every castle zone's heartbeat, in the zone group's thread
@@ -90,6 +112,11 @@ public:
 
 	// the carrier dies, logs out, leaves 1F or morphs: the Mihnea falls where they stand
 	bool dropMihnea(Creature* pCreature, bool bSendPacket = true, const char* why = "dropped") throw(Error);	// death, morph: it falls where the carrier stood
+	void startLair(const char* why) throw(Error);				// the door broke: 5-minute countdown on 2F, then Dracula
+	bool overrideResurrect(Creature* pDead, ZoneID_t& zoneID, ZoneCoord_t& x, ZoneCoord_t& y) throw();	// PCManager hook
+	string forceLair() throw();								// GM startDrac2
+	void leave2F(Creature* pCreature) throw();				// ZoneUtil hook: timer and shake off for whoever leaves 2F
+	string forceFire(int intervalSec, int minN, int maxN, int percent) throw();	// GM dracFire
 	void returnMihnea(Creature* pCreature, const char* why, bool bSendPacket = true) throw(Error);	// logout, transport, leaving 1F: it goes back to the storage (the 1F heartbeat reopens it)
 	// picked up off the floor (CGAddZoneToInventory / CGAddZoneToMouse), or dropped by hand (CGAddMouseToZone)
 	void onMihneaPickedUp(PlayerCreature* pPC, Item* pItem) throw(Error);
@@ -128,6 +155,17 @@ private:
 	EffectID_t cageStatus(NPC* pNPC) const throw();	// the cage variant a caged stand shows
 	void refreshCage(NPC* pNPC) throw();
 	void purgeCarriers() throw(Error);		// every Mihnea item/flag off the PCs on 1F
+	void tick2F(Zone* pZone2F, time_t now) throw(Error);
+	void buildHallways(Zone* pZone2F) throw();
+	void fireHallways(Zone* pZone2F) throw();
+	void sendLairTimer(Zone* pZone2F, bool bEveryone) throw();
+	void sendTimerMessage(PlayerCreature* pPC, int remainSec) throw();
+	void updateShake(Zone* pZone2F) throw();
+	void stopShake(Zone* pZone2F) throw();
+	static bool inRoom(int x, int y) { return x >= ROOM_X1 && x <= ROOM_X2 && y >= ROOM_Y1 && y <= ROOM_Y2; }
+	bool spawnDracula(Zone* pZone2F) throw();
+	void endLair(const char* why) throw();
+	const char* lairStateName() const throw();
 	void checkVlad(Zone* pZone2F) throw(Error);
 	void verifyCarrier() throw(Error);
 	void placePendingDrop(Zone* pZone, time_t now) throw(Error);
@@ -179,6 +217,21 @@ private:
 	bool			m_bArtifactPending;	// the artifact effect waits for the collapse to finish
 	bool			m_bPendingReturn;	// returnMihnea() asked the 1F heartbeat to reopen the storage
 	string			m_PendingReturnWhy;
+	// the 2F lair
+	Zone*			m_pZone2F;
+	LairState		m_LairState;
+	time_t			m_LairStart;
+	time_t			m_LairEnd;			// countdown end = Dracula's spawn time
+	time_t			m_LastFireSec;
+	ObjectID_t		m_DraculaOID;
+	bool			m_bPendingLair;		// GM startDrac2
+	int				m_FireInterval;		// live-tunable copies of the FIRE_* constants
+	int				m_FireMin;
+	int				m_FireMax;
+	int				m_FirePercent;
+	vector< pair<ZoneCoord_t, ZoneCoord_t> > m_Hallways;	// 2F walkable tiles outside the centre room
+	set<ObjectID_t>	m_LairNotified;		// PCs that already have the countdown on screen
+	set<ObjectID_t>	m_Shaking;			// PCs whose screen shakes (in a hallway)
 	NPC*			m_pArtifactNPC;		// which stand shows it
 	EffectID_t		m_SealStatus;		// client status row shown on the sealed storage
 	EffectID_t		m_AltarSealStatus;	// ... and on the caged altar

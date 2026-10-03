@@ -4,16 +4,18 @@ name: Deploy server
 #
 # Builds gameserver, loginserver and sharedserver from main, uploads them and
 # db/ to the VPS, and runs tools/deploy/deploy_on_vps.sh there:
-#   check   the database's version, and that the new binaries find every
-#           library on the VPS - before any server is touched
-#   stop    bin/stop.local.sh, then wait for the servers to exit
-#   migrate replace db/ and run db/deploy_db.py (the migrations it has not had)
-#   install the new binaries
-#   start   bin/start.local.sh, then check all three are running
-# "skip_build" keeps the binaries on the VPS and deploys only the migrations
-# (the servers still restart, so the gameserver reloads its tables).
-# "dry_run" builds, uploads to a staging folder, runs the checks, prints what a
-# deploy would migrate, and stops nothing.
+#   check     the database's version, and that the new binaries find every
+#             library on the VPS
+#   rehearse  copy the live database to <name>_deploytest and run the pending
+#             migrations there; if any fails, nothing live is touched
+#   migrate   replace db/ and run db/deploy_db.py on the live database
+#   install   move the new binaries into bin/
+# It never stops, starts or restarts a server. The running servers keep the
+# build and the tables they started with until you restart them by hand
+# (bin/stop.local.sh, then bin/start.local.sh); the run's summary says so.
+# "skip_build" keeps the binaries on the VPS and deploys only the migrations.
+# "dry_run" stops after the rehearsal: it shows whether the migrations would
+# pass, and changes nothing live.
 #
 # The build runs in an ubuntu:20.04 container: the VPS runs 20.04 binaries and
 # has that release's libraries (libssl1.1, libmysqlclient21, ...). Every build
@@ -40,11 +42,11 @@ on:
   workflow_dispatch:
     inputs:
       skip_build:
-        description: Keep the server binaries on the VPS; only deploy the database migrations and restart
+        description: Keep the server binaries on the VPS; only deploy the database migrations
         type: boolean
         default: false
       dry_run:
-        description: Build and check only; stop, migrate and replace nothing
+        description: Build, check and rehearse the migrations on a copy; change nothing live
         type: boolean
         default: false
 
@@ -92,7 +94,28 @@ jobs:
             StrictHostKeyChecking yes
             ServerAliveInterval 30
           EOF
-          ssh vps "test -d '$SERVER_DIR/bin'" || { echo "no $SERVER_DIR/bin on the VPS (set VPS_SERVER_DIR)"; exit 1; }
+
+          # name the secret that is wrong instead of a bare "verification failed";
+          # only verdicts are printed, never the values
+          ok=1
+          if ! ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null 2>&1; then
+            echo "::error::VPS_SSH_KEY is not a usable private key: paste the whole file, -----BEGIN to -----END, from a key with no passphrase"
+            ok=0
+          fi
+          if ! grep -qE '^[^#[:space:]]+ ssh-ed25519 AAAA' ~/.ssh/known_hosts; then
+            echo "::error::VPS_KNOWN_HOSTS has no '<address> ssh-ed25519 AAAA...' line: paste ssh-keyscan's output, not the SHA256 fingerprint"
+            ok=0
+          elif ! ssh-keygen -F "$VPS_HOST" -f ~/.ssh/known_hosts > /dev/null; then
+            echo "::error::VPS_KNOWN_HOSTS has no line for the address in VPS_HOST: both must be the same bare address (no user@, port, http:// or spaces)"
+            ok=0
+          fi
+          [ "$ok" = 1 ] || exit 1
+
+          ssh vps true
+          if ! ssh vps "test -d '$SERVER_DIR/bin'"; then
+            echo "::error::no $SERVER_DIR/bin on the VPS (set the VPS_SERVER_DIR variable)"
+            exit 1
+          fi
 
       # objects, libraries and a debug-info gameserver need more room than the
       # runner image leaves free

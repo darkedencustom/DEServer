@@ -135,6 +135,7 @@
 
 #include "Gpackets/GCNoticeEvent.h"
 #include "ZoneGroupManager.h"
+#include "DraculaCastleManager.h"
 //////////////////////////////////////////////////////////////////////////////
 // data structure & helper functions
 //////////////////////////////////////////////////////////////////////////////
@@ -8821,7 +8822,8 @@ bool canAttack( Creature* pAttacker, Creature* pDefender )
 	// 게임서버에 PK 설정이 되었는가?
 	static bool bNonPK = g_pGameServerInfoManager->getGameServerInfo( 1, g_pConfig->getPropertyInt( "ServerID" ), g_pConfig->getPropertyInt( "WorldID" ) )->isNonPKServer();
 	//  bool cannotPK = bNonPK || GDRLairManager::Instance().isGDRLairZone( pAttacker->getZoneID() );
-	bool cannotPK = GDRLairManager::Instance().isGDRLairZone( pAttacker->getZoneID() );
+	bool cannotPK = GDRLairManager::Instance().isGDRLairZone( pAttacker->getZoneID() )
+		|| DraculaCastleManager::isLairZone( pAttacker->getZoneID() );	// Dracula Castle 2F: every race against Dracula
 	// non PK 체크
 	if ( cannotPK && pAttacker->isPC() && pDefender->isPC() )
 		return false;

@@ -18,6 +18,7 @@
 #include "Store.h"
 #include "GQuestManager.h"
 #include "SkillUtil.h"
+#include "DraculaCastleManager.h"
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
@@ -131,7 +132,8 @@ void EffectSoulChain::unaffect(Creature* pCreature)
 			if ( pTargetZone != NULL )
 			{
 				// 마스터 레어로는 이동할 수 없다.
-				if ( !pTargetZone->isMasterLair() && !GDRLairManager::Instance().isGDRLairZone( pTargetZone->getZoneID() ) )
+				if ( !pTargetZone->isMasterLair() && !GDRLairManager::Instance().isGDRLairZone( pTargetZone->getZoneID() )
+					&& !DraculaCastleManager::isLairZone( pTargetZone->getZoneID() ) )
 				{
 					// 유료 서비스 이용이 가능한가?
 //					if ( pGamePlayer->loginPayPlay( pGamePlayer->getSocket()->getHost(), pGamePlayer->getID() )

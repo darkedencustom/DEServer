@@ -30,6 +30,9 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include "skill/EffectGroundAttack.h"
+#include "Gpackets/GCNoticeEvent.h"
+#include "Gpackets/GCAddEffectToTile.h"
 
 DraculaCastleManager g_DraculaCastleManager;
 
@@ -75,6 +78,8 @@ DraculaCastleManager::DraculaCastleManager()
 	  m_bDoorUp(false), m_DoorOID(0), m_DoorAnchorX(DOOR_X), m_DoorAnchorY(DOOR_Y),
 	  m_DoorTileX(DOOR_X), m_DoorTileY(DOOR_Y), m_LastVladOID(0), m_ArtifactOID(0), m_pArtifactNPC(NULL), m_StorageCageOID(0), m_AltarCageOID(0), m_CarrierMisses(0),
 	  m_pCollapsing(NULL), m_CollapseUntil(0), m_bArtifactPending(false), m_bPendingReturn(false),
+	  m_pZone2F(NULL), m_LairState(LAIR_IDLE), m_LairStart(0), m_LairEnd(0), m_LastFireSec(0), m_DraculaOID(0), m_bPendingLair(false),
+	  m_FireInterval(FIRE_INTERVAL_SEC), m_FireMin(FIRE_MIN), m_FireMax(FIRE_MAX), m_FirePercent(FIRE_DAMAGE_PERCENT),
 	  m_SealStatus(STORAGE_SEAL_STATUS), m_AltarSealStatus(ALTAR_SEAL_STATUS),
 	  m_bPendingOpen(false), m_bPendingReset(false), m_PendingDoor(0),
 	  m_PendingDoorX(-1), m_PendingDoorY(-1), m_PendingSeal(-1), m_PendingAltarSeal(-1)
@@ -119,7 +124,11 @@ void DraculaCastleManager::heartbeat(Zone* pZone)
 			checkFloor(now);
 
 		if (zoneID == ZONE_2F)
+		{
+			m_pZone2F = pZone;
 			checkVlad(pZone);
+			tick2F(pZone, now);
+		}
 		else if (zoneID == ZONE_1F)
 			tick1F(now);
 	}
@@ -325,6 +334,7 @@ void DraculaCastleManager::reset(const char* why)
 		removeFloorItem();
 
 	purgeCarriers();
+	endLair("reset");
 	m_StorageState = STORAGE_SEALED;
 	showArtifact(m_pStorage);
 	sealStorage();
@@ -661,6 +671,7 @@ string DraculaCastleManager::placeMihnea(PlayerCreature* pPC, Item* pHandItem)
 	sealStorage();
 
 	log("placed by %s, door %s", name.c_str(), m_bDoorUp ? "breaks" : "was already down");
+	startLair("Mihnea placed on the altar");
 	if (m_bDoorUp)
 	{
 		breakDoor();
@@ -1085,6 +1096,359 @@ const char* DraculaCastleManager::stateName() const
 ////////////////////////////////////////////////////////////////////////////////
 // GM
 ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// the 2F lair: countdown, fire in the hallways, Dracula
+////////////////////////////////////////////////////////////////////////////////
+void DraculaCastleManager::startLair(const char* why)
+	throw(Error)
+{
+	time_t now = time(NULL);
+	m_LairState = LAIR_COUNTDOWN;
+	m_LairStart = now;
+	m_LairEnd = now + LAIR_COUNTDOWN_SECONDS;
+	m_LastFireSec = 0;
+	m_LairNotified.clear();
+	log("lair: countdown started (%s), Dracula at %s", why, clock(m_LairEnd).c_str());
+	announce("The way to the 2nd floor of Dracula Castle is open. Vlad II Dracul awakens in 5 minutes.");
+	if (m_pZone2F != NULL) sendLairTimer(m_pZone2F, true);
+}
+
+void DraculaCastleManager::endLair(const char* why)
+	throw()
+{
+	if (m_LairState == LAIR_IDLE) return;
+	log("lair: over (%s)", why);
+	bool bCountdown = (m_LairState == LAIR_COUNTDOWN);
+	m_LairState = LAIR_IDLE;
+	m_DraculaOID = 0;
+	m_LairNotified.clear();
+	m_Shaking.clear();
+	if (m_pZone2F != NULL)
+	{
+		try
+		{
+			GCNoticeEvent gcNotice;
+			gcNotice.setCode(NOTICE_EVENT_CONTINUAL_GROUND_ATTACK_END);
+			m_pZone2F->broadcastPacket(&gcNotice);
+			if (bCountdown)
+			{
+				GCSystemMessage gcMessage;
+				gcMessage.setType(SYSTEM_MESSAGE_TIMER);
+				gcMessage.setMessage("Vlad II Dracul awakens [0]");
+				m_pZone2F->broadcastPacket(&gcMessage);
+			}
+		}
+		catch (Throwable&) {}
+	}
+}
+
+const char* DraculaCastleManager::lairStateName() const
+	throw()
+{
+	switch (m_LairState)
+	{
+		case LAIR_COUNTDOWN: return "countdown";
+		case LAIR_FIGHT: return "Dracula is up";
+		case LAIR_AFTERMATH: return "Dracula fell, 2F empties shortly";
+		default: return "idle";
+	}
+}
+
+void DraculaCastleManager::tick2F(Zone* pZone2F, time_t now)
+	throw(Error)
+{
+	if (m_Hallways.empty()) buildHallways(pZone2F);
+
+	if (m_bPendingLair)
+	{
+		m_bPendingLair = false;
+		startLair("GM startDrac2");
+	}
+
+	if (m_LairState == LAIR_COUNTDOWN)
+	{
+		sendLairTimer(pZone2F, false);
+		// no screen shake: the official game does not shake for the hallway fire (updateShake() kept, unused)
+		if (now - m_LastFireSec >= m_FireInterval)
+		{
+			m_LastFireSec = now;
+			fireHallways(pZone2F);
+		}
+		if (now >= m_LairEnd)
+		{
+			GCSystemMessage gcMessage;
+			gcMessage.setType(SYSTEM_MESSAGE_TIMER);
+			gcMessage.setMessage("Vlad II Dracul awakens [0]");
+			pZone2F->broadcastPacket(&gcMessage);
+			// the hazard ends with the countdown
+			stopShake(pZone2F);
+			if (spawnDracula(pZone2F))
+			{
+				m_LairState = LAIR_FIGHT;
+				announce("Vlad II Dracul has awakened in the heart of Dracula Castle!");
+			}
+			else
+			{
+				endLair("Dracula could not be placed");
+			}
+		}
+	}
+	else if (m_LairState == LAIR_FIGHT)
+	{
+		Creature* pCreature = m_DraculaOID != 0 ? pZone2F->getMonsterManager()->getCreature(m_DraculaOID) : NULL;
+		if (pCreature == NULL || pCreature->isDead())
+		{
+			m_LairState = LAIR_AFTERMATH;
+			m_LairEnd = now + AFTERMATH_SECONDS;
+			log("lair: Dracula fell, everyone leaves 2F at %s", clock(m_LairEnd).c_str());
+			announceZone(pZone2F, "Vlad II Dracul is defeated. You will be taken back to the 1st floor in 10 seconds.");
+		}
+	}
+	else if (m_LairState == LAIR_AFTERMATH)
+	{
+		if (now >= m_LairEnd)
+		{
+			try
+			{
+				pZone2F->getPCManager()->transportAllCreatures(ZONE_1F, RETURN_X, RETURN_Y, defaultRaceValue, 1);
+			}
+			catch (Throwable& t)
+			{
+				log("lair: sending everyone down failed: %s", t.toString().c_str());
+			}
+			endLair("Dracula fell");
+		}
+	}
+}
+
+// Every walkable, portal-free tile of 2F outside the centre room rectangle.
+void DraculaCastleManager::buildHallways(Zone* pZone2F)
+	throw()
+{
+	m_Hallways.clear();
+	for (int y = 0; y < pZone2F->getHeight(); y++)
+	{
+		for (int x = 0; x < pZone2F->getWidth(); x++)
+		{
+			if (x >= ROOM_X1 && x <= ROOM_X2 && y >= ROOM_Y1 && y <= ROOM_Y2) continue;
+			Tile& tile = pZone2F->getTile(x, y);
+			if (tile.isBlocked(Creature::MOVE_MODE_WALKING) || tile.hasPortal()) continue;
+			m_Hallways.push_back(pair<ZoneCoord_t, ZoneCoord_t>((ZoneCoord_t)x, (ZoneCoord_t)y));
+		}
+	}
+	log("lair: %d hallway tiles on 2F", (int)m_Hallways.size());
+}
+
+// One burst of fire pillars: the Bathory / Tepes lair hazard (EffectGroundAttack: percent of max HP on the tile,
+// half of it on the eight tiles around), on random hallway tiles.
+void DraculaCastleManager::fireHallways(Zone* pZone2F)
+	throw()
+{
+	if (m_Hallways.empty() || pZone2F->getPCManager()->getSize() == 0) return;
+	int range = max(0, m_FireMax - m_FireMin);
+	int number = m_FireMin + (range > 0 ? rand() % (range + 1) : 0);
+	for (int i = 0; i < number; i++)
+	{
+		const pair<ZoneCoord_t, ZoneCoord_t>& pt = m_Hallways[rand() % m_Hallways.size()];
+		try
+		{
+			Tile& tile = pZone2F->getTile(pt.first, pt.second);
+			if (!tile.canAddEffect()) continue;
+			if (tile.getEffect(Effect::EFFECT_CLASS_GROUND_ATTACK) != NULL) continue;
+			EffectGroundAttack* pEffect = new EffectGroundAttack(pZone2F, pt.first, pt.second);
+			pEffect->setDamagePercent(m_FirePercent);
+			pEffect->setDeadline(FIRE_STRIKE_TURNS);	// without this the pillar never expires: the base Effect() deadline is 99999999
+			pZone2F->getObjectRegistry().registerObject(pEffect);
+			pZone2F->addEffect(pEffect);
+			tile.addEffect(pEffect);
+			GCAddEffectToTile gcAET;
+			gcAET.setEffectID(pEffect->getEffectClass());
+			gcAET.setObjectID(pEffect->getObjectID());
+			gcAET.setXY(pt.first, pt.second);
+			pZone2F->broadcastPacket(pt.first, pt.second, &gcAET);
+		}
+		catch (Throwable& t)
+		{
+			log("lair: fire at %d/%d failed: %s", (int)pt.first, (int)pt.second, t.toString().c_str());
+		}
+	}
+}
+
+// The countdown on screen (the master-lair combat timer the client already draws) plus the ground-attack
+// screen warning, to everyone on 2F or only to those who have not got it yet.
+void DraculaCastleManager::sendLairTimer(Zone* pZone2F, bool bEveryone)
+	throw()
+{
+	if (m_LairState != LAIR_COUNTDOWN) return;
+	int remain = (int)(m_LairEnd - time(NULL));
+	if (remain < 0) remain = 0;
+	set<ObjectID_t> present;
+	const hash_map<ObjectID_t, Creature*>& pcs = pZone2F->getPCManager()->getCreatures();
+	for (hash_map<ObjectID_t, Creature*>::const_iterator it = pcs.begin(); it != pcs.end(); ++it)
+	{
+		PlayerCreature* pPC = dynamic_cast<PlayerCreature*>(it->second);
+		if (pPC == NULL || pPC->getPlayer() == NULL) continue;
+		present.insert(pPC->getObjectID());
+		if (!bEveryone && m_LairNotified.find(pPC->getObjectID()) != m_LairNotified.end()) continue;
+		m_LairNotified.insert(pPC->getObjectID());
+		sendTimerMessage(pPC, remain);
+	}
+	// whoever left 2F gets the timer again when they come back
+	for (set<ObjectID_t>::iterator it = m_LairNotified.begin(); it != m_LairNotified.end(); )
+	{
+		if (present.find(*it) == present.end()) m_LairNotified.erase(it++);
+		else ++it;
+	}
+}
+
+// The client's timer widget (Hell Garden towers, Menegroth, Gentis): "text [tenths of a second]"; 0 closes it.
+void DraculaCastleManager::sendTimerMessage(PlayerCreature* pPC, int remainSec)
+	throw()
+{
+	if (pPC == NULL || pPC->getPlayer() == NULL) return;
+	try
+	{
+		char msg[128];
+		snprintf(msg, sizeof(msg), "Vlad II Dracul awakens [%d]", remainSec * 10);
+		GCSystemMessage gcMessage;
+		gcMessage.setType(SYSTEM_MESSAGE_TIMER);
+		gcMessage.setMessage(msg);
+		pPC->getPlayer()->sendPacket(&gcMessage);
+	}
+	catch (Throwable&) {}
+}
+
+// The ground-attack screen shake follows the player: on in the hallways, off inside the centre room.
+void DraculaCastleManager::updateShake(Zone* pZone2F)
+	throw()
+{
+	set<ObjectID_t> present;
+	const hash_map<ObjectID_t, Creature*>& pcs = pZone2F->getPCManager()->getCreatures();
+	for (hash_map<ObjectID_t, Creature*>::const_iterator it = pcs.begin(); it != pcs.end(); ++it)
+	{
+		PlayerCreature* pPC = dynamic_cast<PlayerCreature*>(it->second);
+		if (pPC == NULL || pPC->getPlayer() == NULL) continue;
+		ObjectID_t oid = pPC->getObjectID();
+		present.insert(oid);
+		bool bRoom = inRoom(pPC->getX(), pPC->getY());
+		bool bShaking = m_Shaking.find(oid) != m_Shaking.end();
+		if (bRoom == !bShaking) continue;
+		try
+		{
+			GCNoticeEvent gcNotice;
+			if (bRoom)
+			{
+				gcNotice.setCode(NOTICE_EVENT_CONTINUAL_GROUND_ATTACK_END);
+				m_Shaking.erase(oid);
+			}
+			else
+			{
+				gcNotice.setCode(NOTICE_EVENT_CONTINUAL_GROUND_ATTACK);
+				gcNotice.setParameter(24 * 3600);		// until the END notice
+				m_Shaking.insert(oid);
+			}
+			pPC->getPlayer()->sendPacket(&gcNotice);
+		}
+		catch (Throwable&) {}
+	}
+	for (set<ObjectID_t>::iterator it = m_Shaking.begin(); it != m_Shaking.end(); )
+	{
+		if (present.find(*it) == present.end()) m_Shaking.erase(it++);
+		else ++it;
+	}
+}
+
+// The shake off for everyone who has it (the hazard is over).
+void DraculaCastleManager::stopShake(Zone* pZone2F)
+	throw()
+{
+	if (m_Shaking.empty()) return;
+	try
+	{
+		GCNoticeEvent gcNotice;
+		gcNotice.setCode(NOTICE_EVENT_CONTINUAL_GROUND_ATTACK_END);
+		pZone2F->broadcastPacket(&gcNotice);
+	}
+	catch (Throwable&) {}
+	m_Shaking.clear();
+}
+
+// ZoneUtil hook: a player leaving 2F takes no timer and no shake along.
+void DraculaCastleManager::leave2F(Creature* pCreature)
+	throw()
+{
+	PlayerCreature* pPC = dynamic_cast<PlayerCreature*>(pCreature);
+	if (pPC == NULL || pPC->getPlayer() == NULL) return;
+	if (m_LairState != LAIR_IDLE) sendTimerMessage(pPC, 0);
+	if (m_Shaking.find(pPC->getObjectID()) != m_Shaking.end())
+	{
+		try
+		{
+			GCNoticeEvent gcNotice;
+			gcNotice.setCode(NOTICE_EVENT_CONTINUAL_GROUND_ATTACK_END);
+			pPC->getPlayer()->sendPacket(&gcNotice);
+		}
+		catch (Throwable&) {}
+	}
+	m_Shaking.erase(pPC->getObjectID());
+	m_LairNotified.erase(pPC->getObjectID());
+}
+
+// Vlad II Dracul at the centre of the room. Not from the zone's spawn lists (index 0xFFFE, like the Rodin bosses).
+bool DraculaCastleManager::spawnDracula(Zone* pZone2F)
+	throw()
+{
+	Monster* pMonster = NULL;
+	try
+	{
+		pMonster = new Monster(VLAD_TYPE);
+		pMonster->setEventMonsterIndex(0xFFFE);
+		pZone2F->addCreature(pMonster, DRAC_X, DRAC_Y, Directions(rand() % 8));
+	}
+	catch (Throwable& t)
+	{
+		SAFE_DELETE(pMonster);
+		log("lair: Dracula could not be placed at %d/%d: %s", (int)DRAC_X, (int)DRAC_Y, t.toString().c_str());
+		return false;
+	}
+	m_DraculaOID = pMonster->getObjectID();
+	log("lair: Dracula %u spawned at %d/%d", m_DraculaOID, (int)pMonster->getX(), (int)pMonster->getY());
+	return true;
+}
+
+// PCManager hook: whoever dies on 2F during the countdown comes back at the 2F entrance, not at home.
+bool DraculaCastleManager::overrideResurrect(Creature* pDead, ZoneID_t& zoneID, ZoneCoord_t& x, ZoneCoord_t& y)
+	throw()
+{
+	if (pDead == NULL || pDead->getZoneID() != ZONE_2F || m_LairState != LAIR_COUNTDOWN) return false;
+	zoneID = ZONE_2F;
+	x = ENTRY_X;
+	y = ENTRY_Y;
+	log("lair: %s died during the countdown, back to the entrance", pDead->getName().c_str());
+	return true;
+}
+
+string DraculaCastleManager::forceLair()
+	throw()
+{
+	if (!m_bInit) return "Dracula Castle 1F (zone 6051) has not started yet.";
+	if (m_bDoorUp) m_PendingDoor = 2;		// the door breaks on the next 1F tick, as after a placement
+	m_bPendingLair = true;					// the countdown starts on the next 2F tick
+	return "2F lair: door breaks, 5-minute countdown starts (within 1 s).";
+}
+
+string DraculaCastleManager::forceFire(int intervalSec, int minN, int maxN, int percent)
+	throw()
+{
+	if (intervalSec > 0) m_FireInterval = intervalSec;
+	if (minN > 0) m_FireMin = minN;
+	if (maxN > 0) m_FireMax = max(maxN, m_FireMin);
+	if (percent > 0) m_FirePercent = min(percent, 100);
+	char buf[120];
+	snprintf(buf, sizeof(buf), "Fire: every %d s, %d-%d pillars, %d%% of max HP.", m_FireInterval, m_FireMin, m_FireMax, m_FirePercent);
+	return buf;
+}
+
 string DraculaCastleManager::forceOpen()
 	throw()
 {
@@ -1159,5 +1523,10 @@ string DraculaCastleManager::toString() const
 	snprintf(buf, sizeof(buf), "Drac: storage %s, altar %s, Mihnea %s, door %s %d/%d, next %s%s",
 		stateName(), m_bAltarSealed ? "caged" : "open", where, m_bDoorUp ? "up" : "down", m_DoorTileX, m_DoorTileY,
 		clock(m_NextOpenTime).c_str(), (m_pStorage == NULL || m_pAltar == NULL) ? " (NPC MISSING)" : "");
-	return buf;
+	string s = buf;
+	if (m_LairState == LAIR_COUNTDOWN)
+		snprintf(buf, sizeof(buf), " | lair: countdown, Dracula at %s, %d hallway tiles", clock(m_LairEnd).c_str(), (int)m_Hallways.size());
+	else
+		snprintf(buf, sizeof(buf), " | lair: %s", lairStateName());
+	return s + buf;
 }
