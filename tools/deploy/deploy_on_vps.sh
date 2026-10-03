@@ -56,7 +56,7 @@ cleanup() {
     if [ -n "$scratch_made" ]; then
         mysql --defaults-extra-file="$CNF" -e "DROP DATABASE IF EXISTS \`$SCRATCH\`" || true
     fi
-    rm -f "$CNF" "$DUMP"
+    rm -f "$CNF" "$DUMP" "$DUMP.tmp"
 }
 trap cleanup EXIT
 
@@ -119,26 +119,29 @@ if [ -n "$pending" ]; then
         exit 1
     }
     # binary out, latin1 in, as make_skeleton.py does: the latin1 tables hold
-    # CP949 bytes that any conversion would corrupt. Every DEFINER becomes
-    # CURRENT_USER, so the copy's triggers and procedures belong to the deploy
-    # account. (Deleting the clause instead leaves an empty /*!50017 */ that
-    # some MySQL versions reject.) The dump holds player data: private file,
-    # removed on the way out.
+    # CP949 bytes that any conversion would corrupt. The procedures' DEFINER
+    # becomes CURRENT_USER and the triggers are rewritten as plain CREATE TRIGGER
+    # (plain_triggers.awk says why), so the copy belongs to the deploy account.
+    # The dump holds player data: private files, removed on the way out.
     scratch_made=1
     err=$(mysql --defaults-extra-file="$CNF" -e "DROP DATABASE IF EXISTS \`$SCRATCH\`; CREATE DATABASE \`$SCRATCH\`" 2>&1) || { echo "$err" >&2; copy_failed "$err"; }
     err=$( (umask 077; mysqldump --defaults-extra-file="$CNF" --default-character-set=binary \
               --single-transaction --routines --triggers "$DB" > "$DUMP") 2>&1) || { echo "$err" >&2; copy_failed "$err"; }
-    LC_ALL=C sed -i -E 's/DEFINER=`[^`]*`@`[^`]*`/DEFINER=CURRENT_USER/g' "$DUMP"
+    (umask 077; LC_ALL=C sed -E 's/DEFINER=`[^`]*`@`[^`]*`/DEFINER=CURRENT_USER/g' "$DUMP" \
+        | LC_ALL=C awk -f "$STAGE/plain_triggers.awk" > "$DUMP.tmp")
+    mv -f "$DUMP.tmp" "$DUMP"
     if ! err=$(mysql --defaults-extra-file="$CNF" --default-character-set=latin1 "$SCRATCH" < "$DUMP" 2>&1); then
         echo "$err" >&2
-        # show the statement it choked on, unless it is row data (the run log is public)
+        # show the statement it choked on, byte for byte, unless it is row data
+        # (the run log is public)
         n=$(printf '%s\n' "$err" | sed -nE 's/^ERROR .* at line ([0-9]+):.*/\1/p' | head -1)
         if [ -n "$n" ]; then
-            line=$(sed -n "${n}p" "$DUMP" | cut -c1-300)
-            case "$line" in
-                INSERT*) echo "(dump line $n is row data, not shown)" >&2 ;;
-                *)       echo "dump line $n: $line" >&2 ;;
-            esac
+            if sed -n "${n}p" "$DUMP" | grep -q '^INSERT'; then
+                echo "(dump line $n is row data, not shown)" >&2
+            else
+                echo "dump lines $n-$((n + 2)), \$ = line end, ^M = carriage return:" >&2
+                sed -n "${n},$((n + 2))p" "$DUMP" | grep -v '^INSERT' | cut -c1-300 | cat -A >&2
+            fi
         fi
         copy_failed "$err"
     fi

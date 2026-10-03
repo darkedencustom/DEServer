@@ -163,7 +163,7 @@ jobs:
       - name: Upload
         run: |
           ssh vps "rm -rf '$STAGE' && mkdir -p '$STAGE'"
-          scp -r db tools/deploy/deploy_on_vps.sh vps:"$STAGE/"
+          scp -r db tools/deploy/deploy_on_vps.sh tools/deploy/plain_triggers.awk vps:"$STAGE/"
           if [ -f servers.tar.gz ]; then scp servers.tar.gz vps:"$STAGE/"; fi
 
       - name: ${{ inputs.dry_run && 'Check (dry run)' || 'Deploy' }}
