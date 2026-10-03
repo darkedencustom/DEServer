@@ -142,7 +142,7 @@ int SkillDomainInfoFactory() {
 		int    DomainType      = pResult->getInt(1);
 		int    Level		   = pResult->getInt(2);
 		int    GoalExp         = pResult->getInt(3);
-		unsigned int    AccumExp        = pResult->getInt(4);
+		unsigned int    AccumExp        = (unsigned int)pResult->getLongLong(4);
 
 		file.write("&DomainType",    sizeof(int));
 		file.write("&Level",         sizeof(int));
@@ -275,7 +275,7 @@ int VampireExpInfoFactory() {
 	{
 		int    Level		   = pResult->getInt(1);
 		int    GoalExp         = pResult->getInt(2);
-		unsigned int    AccumExp        = pResult->getInt(3);
+		unsigned int    AccumExp        = (unsigned int)pResult->getLongLong(3);
 
 		file.write("&Level",         sizeof(int));
 		file.write("&GoalExp",       sizeof(int));
@@ -321,7 +321,7 @@ int SlayerRankExpFactory()
 	{
 		int    Level		   = pResult->getInt(1);
 		int    GoalExp         = pResult->getInt(2);
-		unsigned int    AccumExp        = pResult->getInt(3);
+		unsigned int    AccumExp        = (unsigned int)pResult->getLongLong(3);
 
 		file.write("&Level",         sizeof(int));
 		file.write("&GoalExp",       sizeof(int));
@@ -367,7 +367,7 @@ int VampireRankExpFactory()
 	{
 		int    Level		   = pResult->getInt(1);
 		int    GoalExp         = pResult->getInt(2);
-		unsigned int    AccumExp        = pResult->getInt(3);
+		unsigned int    AccumExp        = (unsigned int)pResult->getLongLong(3);
 
 		file.write("&Level",         sizeof(int));
 		file.write("&GoalExp",       sizeof(int));
@@ -413,7 +413,7 @@ int OustersExpInfoFactory() {
 	{
 		int    Level		   = pResult->getInt(1);
 		int    GoalExp         = pResult->getInt(2);
-		unsigned int    AccumExp        = pResult->getInt(3);
+		unsigned int    AccumExp        = (unsigned int)pResult->getLongLong(3);
 
 		file.write("&Level",         sizeof(int));
 		file.write("&GoalExp",       sizeof(int));
@@ -459,7 +459,7 @@ int OustersRankExpFactory()
 	{
 		int    Level		   = pResult->getInt(1);
 		int    GoalExp         = pResult->getInt(2);
-		unsigned int    AccumExp        = pResult->getInt(3);
+		unsigned int    AccumExp        = (unsigned int)pResult->getLongLong(3);
 
 		file.write("&Level",         sizeof(int));
 		file.write("&GoalExp",       sizeof(int));
@@ -505,7 +505,7 @@ int STRBalanceInfoFactory() {
 	{
 		int    Level		   = pResult->getInt(1);
 		int    GoalExp         = pResult->getInt(2);
-		unsigned int    AccumExp        = pResult->getInt(3);
+		unsigned int    AccumExp        = (unsigned int)pResult->getLongLong(3);
 
 		file.write("&Level",         sizeof(int));
 		file.write("&GoalExp",       sizeof(int));
@@ -551,7 +551,7 @@ int DEXBalanceInfoFactory() {
 	{
 		int    Level		   = pResult->getInt(1);
 		int    GoalExp         = pResult->getInt(2);
-		unsigned int    AccumExp        = pResult->getInt(3);
+		unsigned int    AccumExp        = (unsigned int)pResult->getLongLong(3);
 
 		file.write("&Level",         sizeof(int));
 		file.write("&GoalExp",       sizeof(int));
@@ -597,7 +597,7 @@ int INTBalanceInfoFactory() {
 	{
 		int    Level		   = pResult->getInt(1);
 		int    GoalExp         = pResult->getInt(2);
-		unsigned int    AccumExp        = pResult->getInt(3);
+		unsigned int    AccumExp        = (unsigned int)pResult->getLongLong(3);
 
 		file.write("&Level",         sizeof(int));
 		file.write("&GoalExp",       sizeof(int));
@@ -642,7 +642,7 @@ int AdvancementClassEXPInfoFactory() {
 	{
 		int    Level		   = pResult->getInt(1);
 		int    GoalExp         = pResult->getInt(2);
-		unsigned int    AccumExp        = pResult->getInt(3);
+		unsigned int    AccumExp        = (unsigned int)pResult->getLongLong(3);
 
 		file.write("&Level",         sizeof(int));
 		file.write("&GoalExp",       sizeof(int));
