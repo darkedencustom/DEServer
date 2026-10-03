@@ -51,11 +51,12 @@ printf '[client]\nhost=%s\nport=%s\nuser=%s\npassword="%s"\n' \
 unset pw
 
 scratch_made=""
+DUMP="$STAGE/live.sql"		# the copy in transit; holds player data
 cleanup() {
     if [ -n "$scratch_made" ]; then
         mysql --defaults-extra-file="$CNF" -e "DROP DATABASE IF EXISTS \`$SCRATCH\`" || true
     fi
-    rm -f "$CNF"
+    rm -f "$CNF" "$DUMP"
 }
 trap cleanup EXIT
 
@@ -105,21 +106,43 @@ fi
 #----------------------------------------------------------------- 2. rehearsal
 if [ -n "$pending" ]; then
     say "rehearsing the migrations on a copy: \`$SCRATCH\`"
-    scratch_made=1
-    # binary out, latin1 in, as make_skeleton.py does: the latin1 tables hold
-    # CP949 bytes that any conversion would corrupt. DEFINER clauses go, so the
-    # copy's triggers and procedures belong to the deploy account.
-    if ! { mysql --defaults-extra-file="$CNF" -e "DROP DATABASE IF EXISTS \`$SCRATCH\`; CREATE DATABASE \`$SCRATCH\`" &&
-           mysqldump --defaults-extra-file="$CNF" --default-character-set=binary \
-               --single-transaction --routines --triggers "$DB" \
-             | LC_ALL=C sed -E 's/DEFINER=`[^`]*`@`[^`]*`//g' \
-             | mysql --defaults-extra-file="$CNF" --default-character-set=latin1 "$SCRATCH"; }; then
+    echo "client: $(mysql --version)"
+    echo "server: $(mysql --defaults-extra-file="$CNF" -N -e 'SELECT VERSION()')"
+    copy_failed() {
         echo >&2
-        echo "could not copy \`$DB\` to \`$SCRATCH\`, so nothing was migrated. The account" >&2
-        echo "${DE_DB_USER:-elcastle} needs CREATE, DROP, TRIGGER and CREATE ROUTINE on \`$SCRATCH\`" >&2
-        echo "and SELECT, SHOW VIEW, TRIGGER and SHOW_ROUTINE on \`$DB\`." >&2
+        echo "could not copy \`$DB\` to \`$SCRATCH\`, so nothing was migrated." >&2
+        case "$1" in
+            *"denied"*)
+                echo "The account ${DE_DB_USER:-elcastle} needs CREATE, DROP, TRIGGER and CREATE ROUTINE on" >&2
+                echo "\`$SCRATCH\`, and SELECT, SHOW VIEW, TRIGGER and SHOW_ROUTINE on \`$DB\`." >&2 ;;
+        esac
         exit 1
+    }
+    # binary out, latin1 in, as make_skeleton.py does: the latin1 tables hold
+    # CP949 bytes that any conversion would corrupt. Every DEFINER becomes
+    # CURRENT_USER, so the copy's triggers and procedures belong to the deploy
+    # account. (Deleting the clause instead leaves an empty /*!50017 */ that
+    # some MySQL versions reject.) The dump holds player data: private file,
+    # removed on the way out.
+    scratch_made=1
+    err=$(mysql --defaults-extra-file="$CNF" -e "DROP DATABASE IF EXISTS \`$SCRATCH\`; CREATE DATABASE \`$SCRATCH\`" 2>&1) || { echo "$err" >&2; copy_failed "$err"; }
+    err=$( (umask 077; mysqldump --defaults-extra-file="$CNF" --default-character-set=binary \
+              --single-transaction --routines --triggers "$DB" > "$DUMP") 2>&1) || { echo "$err" >&2; copy_failed "$err"; }
+    LC_ALL=C sed -i -E 's/DEFINER=`[^`]*`@`[^`]*`/DEFINER=CURRENT_USER/g' "$DUMP"
+    if ! err=$(mysql --defaults-extra-file="$CNF" --default-character-set=latin1 "$SCRATCH" < "$DUMP" 2>&1); then
+        echo "$err" >&2
+        # show the statement it choked on, unless it is row data (the run log is public)
+        n=$(printf '%s\n' "$err" | sed -nE 's/^ERROR .* at line ([0-9]+):.*/\1/p' | head -1)
+        if [ -n "$n" ]; then
+            line=$(sed -n "${n}p" "$DUMP" | cut -c1-300)
+            case "$line" in
+                INSERT*) echo "(dump line $n is row data, not shown)" >&2 ;;
+                *)       echo "dump line $n: $line" >&2 ;;
+            esac
+        fi
+        copy_failed "$err"
     fi
+    rm -f "$DUMP"
     if ! python3 "$STAGE/db/deploy_db.py" --db "$SCRATCH" --migrations "$STAGE/db/migrations"; then
         echo >&2
         echo "the migrations FAIL on a copy of \`$DB\`; nothing was changed on \`$DB\`," >&2
